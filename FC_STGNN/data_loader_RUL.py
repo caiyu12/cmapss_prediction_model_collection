@@ -12,17 +12,35 @@ import math
 import torch.utils.data as data
 import logging
 # from config import config
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(filename)s %(levelname)s %(message)s',
+                    datefmt='%a %d %b %Y %H:%M:%S',
+                    filename='my.log',
+                    filemode='w')
+
 
 class CMPDataIter(data.IterableDataset):
+    """
+    CMPDataIter类初始化数据迭代器。
+
+    该类负责加载和预处理CMAPSS故障预测数据集，并为训练和测试数据提供迭代器。
+
+    参数:
+    - data_root: 数据集根目录路径。
+    - data_set: 数据集名称。
+    - max_rul: 最大运行时限制。
+    - seq_len: 序列长度。
+    - net_name: 网络名称。
+    """
 
     def __init__(self, data_root, data_set, max_rul, seq_len, net_name):
         super(CMPDataIter, self).__init__()
         # load params
         self.data_root = data_root
-        self.data_set = data_set
-        self.max_rul = max_rul
-        self.seq_len = seq_len
-        self.net_name = net_name
+        self.data_set = data_set #used to load file
+        self.max_rul = max_rul #used to limit the maximum rul
+        self.seq_len = seq_len #the sequence length gained for a time
+        self.net_name = net_name 
         self.column_names = ['id', 'cycle', 'setting1', 'setting2', 'setting3', 's1', 's2', 's3',
                             's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11', 's12', 's13', 's14',
                             's15', 's16', 's17', 's18', 's19', 's20', 's21']
@@ -37,19 +55,19 @@ class CMPDataIter(data.IterableDataset):
         logging.info("CMPDataIter:: iterator initialized (test dataset: '{:s}', shape: {:})".format(data_set,
                                                                                                     self.test_data_df.shape))
 
-        self.train_x, self.train_ops, self.train_y, self.test_x, self.test_ops, self.test_y, self.train_normalized, self.test_normalized = self._process(
+        self.train_x, self.train_y, self.test_x, self.test_y, self.train_normalized, self.test_normalized = self._process(
             self.train_data_df, self.test_data_df, self.test_truth)
 
         logging.info("CMPDataIter:: iterator initialized (train data shape: {:})".format(len(self.train_x)))
-        logging.info("CMPDataIter:: iterator initialized (train operation shape: {:})".format(len(self.train_ops)))
+
         logging.info("CMPDataIter:: iterator initialized (train label shape: {:})".format(len(self.train_y)))
 
         logging.info("CMPDataIter:: iterator initialized (test data shape: {:})".format(len(self.test_x)))
-        logging.info("CMPDataIter:: iterator initialized (test operation shape: {:})".format(len(self.test_ops)))
+
         logging.info("CMPDataIter:: iterator initialized (test label shape: {:})".format(len(self.test_y)))
 
-        self.folded_train_x, self.folded_train_ops, self.folded_train_y = self.cross_fold(
-            [self.train_x, self.train_ops, self.train_y])
+        self.folded_train_x, self.folded_train_y = self.cross_fold(
+            [self.train_x, self.train_y])
 
 
         self.initial()
@@ -59,6 +77,7 @@ class CMPDataIter(data.IterableDataset):
 
         train_data_pt = os.path.join(data_root, 'CMAPSSData',  'train_'+ data_set +'.txt')
         assert os.path.exists(train_data_pt), 'data path does not exist: {:}'.format(train_data_pt)
+        #logging.info("CMPDataIter:: iterator initialized (train_data_pt len: {:})".format(len(train_data_pt)))
         # print(train_data_pt)
         test_data_pt = os.path.join(data_root, 'CMAPSSData', 'test_'+ data_set +'.txt')
         assert os.path.exists(test_data_pt), 'data path does not exist: {:}'.format(test_data_pt)
@@ -67,7 +86,7 @@ class CMPDataIter(data.IterableDataset):
         assert os.path.exists(test_truth_pt), 'data path does not exist: {:}'.format(test_truth_pt)
 
         train_data_df = pd.read_csv(train_data_pt, sep=" ", header=None)
-        train_data_df.drop(train_data_df.columns[[26, 27]], axis=1, inplace=True)
+        train_data_df.drop(train_data_df.columns[[26, 27]], axis=1, inplace=True) #似乎转化为df时会产生26，27两行值为NaN的数据
         train_data_df.columns = self.column_names
         train_data_df = train_data_df.sort_values(['id','cycle'])
 
@@ -96,6 +115,7 @@ class CMPDataIter(data.IterableDataset):
 
         train_y = train_y.apply(lambda x: [y if y <= self.max_rul else self.max_rul for y in x])
         train_engine_num = train_df['id'].nunique()
+
         logging.info("CMPDataIter:: iterator initialized (train engine number: {:})".format(train_engine_num))
 
         # process test data
@@ -152,9 +172,11 @@ class CMPDataIter(data.IterableDataset):
 
         train_normalized = train_normalized.sort_index()
         test_normalized = test_normalized.sort_index()
+        #guess:sorted by setting 1, unnessisery in FD001
         # print('train_normalized is '+ str(np.shape(train_normalized)))
         # diff@xuqing
-        train_setting = scaler.fit_transform(train_df.iloc[:, 1:5])
+        train_df_slide = train_df.iloc[:, 1:5]
+        train_setting = scaler.fit_transform(train_df_slide)
         test_setting = scaler.transform(test_df.iloc[:, 1:5])
 
         train_setting = pd.DataFrame(
@@ -191,18 +213,6 @@ class CMPDataIter(data.IterableDataset):
             start_index = end_index
         train_x = list(seq_gen)
 
-        #generate 3 x 15 windows to obtain train_ops
-        seq_gen = []
-        start_index = 0
-        for i in range(train_engine_num):
-            end_index = start_index+train_rul.loc[i, 'max']
-            # print(end_index)
-            # for ops train matrix, number of 3 X 15 needed per data points (minus the first sequence length) per engine, so the array input start from start index
-            #settings data are in the first 3 columns of Train_Norm
-            val=list(self.gen_sequence(train_setting.iloc[start_index:end_index, :], self.seq_len, train_setting.columns))
-            seq_gen.extend(val)
-            start_index = end_index
-        train_ops = list(seq_gen)
 
         # generate train labels
         seq_gen = []
@@ -239,30 +249,6 @@ class CMPDataIter(data.IterableDataset):
         test_x = list(seq_gen)
         # print(np.shape(test_y))
 
-        seq_gen = []
-        start_index = 0
-        for i in range(test_engine_num):
-            end_index = start_index+test_rul.loc[i, 'max']
-            # for test matrix, only 1 of n X 15 needed per engine, so the array input start from end index - sequence length
-            # print(end_index - start_index)
-            if end_index - start_index < self.seq_len:
-                print('Setting::test data ({:}) less than seq_len ({:})!'
-                    .format(end_index - start_index, self.seq_len))
-
-                # simply pad the first data serveral times:
-                print('Setting::Use first data to pad!')
-                num_pad = self.seq_len - (end_index - start_index)
-                new_sg = test_setting.iloc[start_index:end_index, :]
-                for idx in range(num_pad):
-                    new_sg = pd.concat([new_sg.head(1), new_sg], axis=0)
-                    
-                val=list(self.gen_sequence(new_sg, self.seq_len, test_setting.columns))
-            else:
-                val=list(self.gen_sequence(test_setting.iloc[end_index - self.seq_len:end_index, :], self.seq_len, test_setting.columns))
-
-            seq_gen.extend(val)
-            start_index = end_index
-        test_ops = list(seq_gen)
 
         # print('label starts')
         seq_gen = []
@@ -279,13 +265,30 @@ class CMPDataIter(data.IterableDataset):
             start_index = end_index
         test_y = list(seq_gen)
 
-        return train_x, train_ops, train_y, test_x, test_ops, test_y, train_normalized, test_normalized
+        return train_x, train_y, test_x, test_y, train_normalized, test_normalized
     
     def gen_sequence(self, id_df, seq_length, seq_cols):
-
+        """
+        Generates sequences from a specific set of columns in a DataFrame.
+    
+        This function is used to generate sequential data matrices of fixed length from a given DataFrame. Each sequence starts from the first row of data and gradually moves forward until the end of the DataFrame is reached. This is particularly useful for time series analysis or sequence model training.
+    
+        Parameters:
+        - id_df: DataFrame, the source data from which to generate sequences.
+        - seq_length: int, the length of each generated sequence.
+        - seq_cols: list, the names of the columns in the DataFrame used to generate the sequences.
+    
+        Returns:
+        - Generator that yields each generated sequence as a numpy array.
+        """
+    
+        # Convert the specified columns of the DataFrame to a numpy array for faster processing
         # for one id I put all the rows in a single matrix
         data_matrix = id_df[seq_cols].values.astype(np.float32)
+        # Get the total number of elements in the numpy array
         num_elements = data_matrix.shape[0]
+    
+        # Generate sequences by sliding a window of length seq_length across the data_matrix
         # Iterate over two lists in parallel.
         # For example id1 (engine 1) have 192 rows and sequence_length is equal to 15
         # so zip iterate over two following list of numbers (0,177),(14,191)
@@ -295,6 +298,7 @@ class CMPDataIter(data.IterableDataset):
         # ...
         # 177 191 -> from row 177 to 191
         for start, stop in zip(range(0, num_elements-seq_length+1), range(seq_length, num_elements+1)):
+            # Yield each sequence as a numpy array
             yield data_matrix[start:stop, :]
     
     def gen_labels(self, id_df, seq_length, label):
@@ -330,27 +334,26 @@ class CMPDataIter(data.IterableDataset):
             val_fold_ind = self.val_fold % 5
 
             train_x = list(self.folded_train_x)
-            train_ops = list(self.folded_train_ops)
             train_y = list(self.folded_train_y)
 
             self.cross_val_x = train_x.pop(val_fold_ind)
-            self.cross_val_ops = train_ops.pop(val_fold_ind)
+
             self.cross_val_y = train_y.pop(val_fold_ind)
 
             self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3] 
-            self.cross_train_ops = train_ops[0] + train_ops[1] + train_ops[2] + train_ops[3]
+
             self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3]
 
             self.val_fold += 1
 
             self.out_x = self.cross_train_x
-            self.out_ops = self.cross_train_ops
+
             self.out_y = self.cross_train_y
             self.end = len(self.out_x)
         elif mode == 'val':
             self.mode = 'val'
             self.out_x = self.cross_val_x
-            self.out_ops = self.cross_val_ops
+
             self.out_y = self.cross_val_y
             self.end = len(self.out_x)
 
@@ -358,33 +361,31 @@ class CMPDataIter(data.IterableDataset):
             self.mode == 'test'
             self.out_x = self.test_x
             self.out_y = self.test_y
-            self.out_ops = self.test_ops
+
             self.end = len(self.out_x)
-    
+
     def initial(self):
 
         val_fold_ind = 0
 
         train_x = list(self.folded_train_x)
-        train_ops = list(self.folded_train_ops)
+
         train_y = list(self.folded_train_y)
 
         self.cross_val_x = train_x.pop(val_fold_ind)
-        self.cross_val_ops = train_ops.pop(val_fold_ind)
+
         self.cross_val_y = train_y.pop(val_fold_ind)
 
-        self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3] 
-        self.cross_train_ops = train_ops[0] + train_ops[1] + train_ops[2] + train_ops[3]
+        self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3]
+
         self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3]
 
         self.out_x = self.cross_train_x
-        self.out_ops = self.cross_train_ops
+
         self.out_y = self.cross_train_y
 
         self.start = 0
         self.end = len(self.out_x)
-
-
 
     def cross_fold(self, data_list):
 
@@ -395,43 +396,45 @@ class CMPDataIter(data.IterableDataset):
         group_size = num_data // 5
         # print(group_size)
 
-        zip_list = list(zip(data_list[0], data_list[1], data_list[2]))
+        zip_list = list(zip(data_list[0], data_list[1]))
 
         random.shuffle(zip_list)
-        train_x, train_ops, train_y = zip(*zip_list)
+        train_x, train_y = zip(*zip_list)
 
         # train_x = data_list[0][rand_indx]
         # train_ops = data_list[1][rand_indx]
         # train_y = data_list[2][rand_indx]
 
         grouped_train_x = []
-        grouped_train_ops = []
+        # grouped_train_ops = []
         grouped_train_y = []
 
         for g_id in range(4):
-            group_train_x = train_x[0+g_id*group_size:group_size+(g_id)*group_size]
+            group_train_x = train_x[0 + g_id * group_size:group_size + (g_id) * group_size]
             # print(np.shape(group_train_x))
-            group_train_ops = train_ops[0+g_id*group_size:group_size+(g_id)*group_size]
-            group_train_y = train_y[0+g_id*group_size:group_size+(g_id)*group_size]
+            # group_train_ops = train_ops[0 + g_id * group_size:group_size + (g_id) * group_size]
+            group_train_y = train_y[0 + g_id * group_size:group_size + (g_id) * group_size]
 
             grouped_train_x.append(group_train_x)
-            grouped_train_ops.append(group_train_ops)
+            # grouped_train_ops.append(group_train_ops)
             grouped_train_y.append(group_train_y)
-        
-        grouped_train_x.append(train_x[4*group_size:])
-        grouped_train_ops.append(train_ops[4*group_size:])
-        grouped_train_y.append(train_y[4*group_size:])
 
-        return grouped_train_x, grouped_train_ops, grouped_train_y 
+        grouped_train_x.append(train_x[4 * group_size:])
+        # grouped_train_ops.append(train_ops[4 * group_size:])
+        grouped_train_y.append(train_y[4 * group_size:])
+
+        return grouped_train_x, grouped_train_y
+
+
 
     def __iter__(self):
         # output self.train_x, self.train_ops, self.train_y, self.test_x, self.test_ops, self.test_y  according to self.mode
 
         out_x = self.out_x[self.start: self.end]
-        out_ops = self.out_ops[self.start: self.end]
+
         out_y = self.out_y[self.start: self.end]
 
-        sum_iter = zip(out_x, out_ops, out_y)
+        sum_iter = zip(out_x, out_y)
 
         return iter(sum_iter)
 
@@ -451,7 +454,7 @@ def worker_init_fn(worker_id):
 
 class CMPDataIter_graph(data.IterableDataset):
 
-    def __init__(self, data_root, data_set, max_rul, seq_len, time_denpen_len,window_sample, net_name):
+    def __init__(self, data_root, data_set, max_rul, seq_len, time_denpen_len, window_sample, net_name):
         super(CMPDataIter_graph, self).__init__()
 
         data_iter = CMPDataIter(data_root = data_root,
@@ -461,22 +464,25 @@ class CMPDataIter_graph(data.IterableDataset):
                                                     net_name=net_name)
 
         self.out_x = data_iter.out_x
-        self.out_ops = data_iter.out_ops
+        self.out_x_3d = data_iter.out_x
 
-        self.out_x = self.data_sampling(self.out_x, seq_len, time_denpen_len)
-        self.out_ops = self.data_sampling(self.out_ops, seq_len, time_denpen_len)
+
+        # self.out_x = self.data_sampling(self.out_x, seq_len, time_denpen_len)
+
         self.out_y = data_iter.out_y
 
+        self.cross_val_x_3d = data_iter.cross_val_x
         self.cross_val_x = data_iter.cross_val_x
-        self.cross_val_ops = data_iter.cross_val_ops
-        self.cross_val_x = self.data_sampling(self.cross_val_x, seq_len, time_denpen_len)
-        self.cross_val_ops = self.data_sampling(self.cross_val_ops, seq_len, time_denpen_len)
+
+        # self.cross_val_x = self.data_sampling(self.cross_val_x, seq_len, time_denpen_len)
+
         self.cross_val_y = data_iter.cross_val_y
 
+        self.test_x_3d = data_iter.test_x
         self.test_x = data_iter.test_x
-        self.test_ops =data_iter.test_ops
-        self.test_x = self.data_sampling(self.test_x, seq_len, time_denpen_len)
-        self.test_ops = self.data_sampling(self.test_ops, seq_len, time_denpen_len)
+
+        # self.test_x = self.data_sampling(self.test_x, seq_len, time_denpen_len)
+
         self.test_y = data_iter.test_y
 
         self.train_normalized = data_iter.train_normalized
@@ -500,3 +506,14 @@ class CMPDataIter_graph(data.IterableDataset):
 
         data_ls = np.stack(data_ls, 1)
         return data_ls
+
+class MyCMPDataIter(CMPDataIter_graph):
+    def __init__(self, directory, data_set, max_rul, seq_len, time_denpen_len, window_sample, net_name):
+        super().__init__(directory, data_set, max_rul, seq_len, time_denpen_len, window_sample, net_name)
+        # Initialize any additional attributes here if needed
+
+    def __iter__(self):
+        # Implement the iterator protocol
+        # For example, yield batches of data
+        pass
+

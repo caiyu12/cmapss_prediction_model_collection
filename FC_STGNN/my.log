@@ -1,0 +1,10 @@
+Mon 15 Jul 2024 15:43:31 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train dataset: 'FD004', shape: (61249, 26))
+Mon 15 Jul 2024 15:43:31 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test dataset: 'FD004', shape: (41214, 26))
+Mon 15 Jul 2024 15:43:32 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train engine number: 249)
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test engine number: 248)
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: data includes multi operating conditions
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train data shape: 49048)
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train label shape: 49048)
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test data shape: 248)
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test label shape: 248)
+Mon 15 Jul 2024 15:43:33 data_loader_RUL.py INFO CMPDataIter:: initialize the dataset
