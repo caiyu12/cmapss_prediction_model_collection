@@ -5,14 +5,14 @@
       <paths name="Starship">
         <serverdata>
           <mappings>
-            <mapping deploy="/cyc/FCSTGNN" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
       <paths name="scuee_user02@202.115.52.217:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/pycharm_project_357" local="$PROJECT_DIR$" />
+            <mapping deploy="/cp/model_collection" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

@@ -1,51 +1,51 @@
 import torch as tr
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import pandas as pd
-from test_model import model_cnn
-from data_loader_RUL import MyCMPDataIter
+import matplotlib.pyplot as plt
+import time
+import math
+import os
+import Model
+
+from data_loader_RUL import CMPDataIter_graph, MyCMPDataIter
 import matplotlib.pyplot as plt
 import random
-import visualize
 
 class Train():
     def __init__(self, args):
 
 
         data_iter = MyCMPDataIter('./',
-                                data_set='FD00{}'.format(str(args.data_sub)),
-                                max_rul=args.max_rul,
-                                seq_len=args.patch_size,
-                                time_denpen_len=args.time_denpen_len,
-                                window_sample=args.window_sample,
-                                net_name=1)
+                                  data_set='FD00{}'.format(str(args.data_sub)),
+                                  max_rul=args.max_rul,
+                                  seq_len=args.patch_size,
+                                  time_denpen_len=args.time_denpen_len,
+                                  window_sample=args.window_sample,
+                                  net_name=1)
 
 
         self.args = args
-        self.train_data_4d = self.cuda_(data_iter.out_x)
-        self.train_data = self.cuda_(data_iter.out_x_3d)
-        #self.train_ops = self.cuda_(data_iter.out_ops)
+        self.train_data = self.cuda_(data_iter.out_x)
+        self.train_ops = self.cuda_(data_iter.out_ops)
         self.train_label = self.cuda_(data_iter.out_y)
 
-        self.val_data_4d = self.cuda_(data_iter.cross_val_x)
-        self.val_data = self.cuda_(data_iter.cross_val_x_3d)
-        # self.val_ops = self.cuda_(data_iter.cross_val_ops)
+        self.val_data = self.cuda_(data_iter.cross_val_x)
+        self.val_ops = self.cuda_(data_iter.cross_val_ops)
         self.val_label = self.cuda_(data_iter.cross_val_y)
 
-        self.test_data_4d = self.cuda_(data_iter.test_x)
-        self.test_data = self.cuda_(data_iter.test_x_3d)
-        # self.test_ops = self.cuda_(data_iter.test_ops)
+        self.test_data = self.cuda_(data_iter.test_x)
+        self.test_ops = self.cuda_(data_iter.test_ops)
         self.test_label = self.cuda_(data_iter.test_y)
 
-        # self.train_data = self.data_preprocess_transpose(self.train_data)
-        # self.test_data = self.data_preprocess_transpose(self.test_data)
-        # self.val_data = self.data_preprocess_transpose(self.val_data)
+        self.train_data, self.train_ops = self.data_preprocess_transpose(self.train_data, self.train_ops)
+        self.test_data, self.test_ops = self.data_preprocess_transpose(self.test_data, self.test_ops)
+        self.val_data, self.val_ops = self.data_preprocess_transpose(self.val_data, self.val_ops)
 
-        # self.net = Model.FC_STGNN_RUL(args.patch_size,args.conv_out, args.lstmhidden_dim, args.lstmout_dim,args.conv_kernel, args.hidden_dim,args.conv_time_CNN, args.num_sensor, args.num_windows,args.moving_window,args.stride, args.decay, args.pool_choice, 1)
-        self.net = model_cnn.TCNN_base(WINDOW_SIZE= args.window_sample, FC_DROPOUT=0.2)
-        #self.net = model_lstm.LSTM1(14)
-        #self.net = TSMixer.Model(sensors=14, e_layers=4, d_model=36, seq_len=50, pred_len=1, dropout=0.2) #SOTA_for now
+        self.net = Model.FC_STGNN_RUL(args.patch_size,args.conv_out, args.lstmhidden_dim, args.lstmout_dim,args.conv_kernel, args.hidden_dim,args.conv_time_CNN, args.num_sensor, args.num_windows,args.moving_window,args.stride, args.decay, args.pool_choice, 1)
+
 
         self.net = self.net.cuda() if tr.cuda.is_available() else self.net
         self.loss_function = nn.MSELoss()
@@ -142,7 +142,7 @@ class Train():
         else:
             return x
 
-    def data_preprocess_transpose(self, data):
+    def data_preprocess_transpose(self, data, ops):
         '''
 
         :param data: size is [bs, time_length, dimension, Num_nodes]
@@ -150,9 +150,9 @@ class Train():
         '''
 
         data = tr.transpose(data,2,3)
+        ops = tr.transpose(ops,2,3)
 
-
-        return data
+        return data, ops
 
     def Cross_validation(self):
         self.net.eval()
@@ -189,20 +189,18 @@ class Train():
 
         RMSE = tr.sqrt(MSE)*self.args.max_rul
         score = self.scoring_function(predicted_RUL, real_RUL)
-        cpu_predict = predicted_RUL.cpu().detach().numpy()
-        cpu_real = real_RUL.cpu().detach().numpy()
-        cpu_RMSE = RMSE.cpu().detach().numpy()
+
         self.visualize(
-            result=cpu_predict*self.args.max_rul,
-            y_test=cpu_real*self.args.max_rul,
+            result=predicted_RUL.detach().cpu().numpy()*self.args.max_rul,
+            y_test=real_RUL.detach().cpu().numpy()*self.args.max_rul,
             num_test=100,
-            rmse=cpu_RMSE
+            rmse=RMSE.detach().cpu().numpy()
         )
-        # self.visualization(predicted_RUL.cpu().detach().numpy(), real_RUL.cpu().detach().numpy())
-        return RMSE.detach().cpu().numpy(),\
-               score.detach().cpu().numpy(), \
-               predicted_RUL.detach().cpu().numpy(), \
-               real_RUL.detach().cpu().numpy()
+
+        return RMSE.detach().cpu().numpy(), \
+            score.detach().cpu().numpy(), \
+            predicted_RUL.detach().cpu().numpy(), \
+            real_RUL.detach().cpu().numpy()
 
     def Prediction_training(self):
         self.net.eval()
@@ -214,23 +212,12 @@ class Train():
         RMSE = tr.sqrt(MSE) * self.args.max_rul
         score = self.scoring_function(prediction, train_label_sample)
         return RMSE.detach().cpu().numpy(), \
-               score.detach().cpu().numpy(), \
-               prediction.detach().cpu().numpy(), \
-               train_label_sample.detach().cpu().numpy()
-
-
-    def visualization(self, prediction, real):
-        fig = plt.figure()
-        sub = fig.add_subplot(1, 1, 1)
-
-        sub.plot(prediction, color = 'red', label = 'Predicted Labels')
-        sub.plot(real, 'black', label = 'Real Labels')
-        sub.legend()
-        plt.show()
+            score.detach().cpu().numpy(), \
+            prediction.detach().cpu().numpy(), \
+            train_label_sample.detach().cpu().numpy()
 
     def visualize(self, result, y_test, num_test, rmse):
         """
-
         :param result: RUL prediction results
         :param y_test: true RUL of testing set
         :param num_test: number of samples
@@ -259,21 +246,14 @@ class Train():
         plt.ylabel("Remaining Useful Life")
         plt.show()
 
+    def visualization(self, prediction, real):
+        fig = plt.figure()
+        sub = fig.add_subplot(1, 1, 1)
 
-        # plt.text(
-        #     x=0,
-        #     y=20,
-        #
-        #     bbox={
-        #         'facecolor': 'none',
-        #         'edgecolor': 'black',
-        #         'boxstyle': 'round'
-        #     }
-        # )
-
-        # plt.savefig('./_trials/{}/{} RUL Prediction.png'.format(DIR_NAME, round(rmse, 3)))
-
-
+        sub.plot(prediction, color = 'red', label = 'Predicted Labels')
+        sub.plot(real, 'black', label = 'Real Labels')
+        sub.legend()
+        plt.show()
 
     def scoring_function(self, predicted, real):
         score = 0
@@ -290,19 +270,14 @@ class Train():
 
 
 if __name__ == '__main__':
-
     from args import args
 
     args = args()
 
-    tr.manual_seed(34)
-
-
-
 
     def args_config(data_sub, args):
 
-        args.epoch = 41
+        args.epoch = 51
         args.k = 1
         args.batch_size = 100
         args.conv_kernel = 2
@@ -312,6 +287,7 @@ if __name__ == '__main__':
         args.pool_choice = 'mean'
         args.decay = 0.7
 
+
         if data_sub == 1:
             args.data_sub = 1
             args.patch_size = 5
@@ -320,7 +296,7 @@ if __name__ == '__main__':
             args.num_windows = 8
             args.lstmout_dim = 32
             args.hidden_dim = 8
-            args.window_sample = 50
+            args.window_sample = 30
             args.conv_time_CNN = 6
             args.lstmhidden_dim = 8
             args.test_engine_num = 100
@@ -346,7 +322,7 @@ if __name__ == '__main__':
             args.num_windows = 36
             args.lstmout_dim = 6
             args.hidden_dim = 24
-            args.window_sample = 30
+            args.window_sample = 50
             args.conv_time_CNN = 25
             args.lstmhidden_dim = 8
             args.test_engine_num = 100
@@ -367,8 +343,6 @@ if __name__ == '__main__':
 
         return args
 
-    data_sub = 4
-    args = args_config(data_sub, args)
+    args = args_config(3, args)
     train = Train(args)
-    RMSE, test_score, result_predicted, result_real = train.Train_model()
-    visualize(result=result_predicted, y_test=result_real, num_test=100, rmse=RMSE, data_sub=data_sub)
+    train.Train_model()
