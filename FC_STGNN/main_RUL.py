@@ -42,10 +42,21 @@ class Train():
         # self.test_data = self.data_preprocess_transpose(self.test_data)
         # self.val_data = self.data_preprocess_transpose(self.val_data)
 
+        #NET=FCSTGNN
         # self.net = Model.FC_STGNN_RUL(args.patch_size,args.conv_out, args.lstmhidden_dim, args.lstmout_dim,args.conv_kernel, args.hidden_dim,args.conv_time_CNN, args.num_sensor, args.num_windows,args.moving_window,args.stride, args.decay, args.pool_choice, 1)
+
+        #NET=TCNN
         self.net = model_cnn.TCNN_base(WINDOW_SIZE= args.window_sample, FC_DROPOUT=0.2)
+
+        #NET=LSTM
         #self.net = model_lstm.LSTM1(14)
+
+        #NET=TSMixer
         #self.net = TSMixer.Model(sensors=14, e_layers=4, d_model=36, seq_len=50, pred_len=1, dropout=0.2) #SOTA_for now
+
+        #NET=Encoder
+
+        #NET=LSTM
 
         self.net = self.net.cuda() if tr.cuda.is_available() else self.net
         self.loss_function = nn.MSELoss()
