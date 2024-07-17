@@ -3,11 +3,13 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pandas as pd
-from test_model import model_cnn
 from data_loader_RUL import MyCMPDataIter
 import matplotlib.pyplot as plt
 import random
 import visualize
+
+#REMIND: MODEL IMPORTED
+from test_model import model_encoder
 
 class Train():
     def __init__(self, args):
@@ -46,15 +48,16 @@ class Train():
         # self.net = Model.FC_STGNN_RUL(args.patch_size,args.conv_out, args.lstmhidden_dim, args.lstmout_dim,args.conv_kernel, args.hidden_dim,args.conv_time_CNN, args.num_sensor, args.num_windows,args.moving_window,args.stride, args.decay, args.pool_choice, 1)
 
         #NET=TCNN
-        self.net = model_cnn.TCNN_base(WINDOW_SIZE= args.window_sample, FC_DROPOUT=0.2)
+        # self.net = model_cnn.TCNN_base(WINDOW_SIZE= args.window_sample, FC_DROPOUT=0.2)
 
         #NET=LSTM
-        #self.net = model_lstm.LSTM1(14)
+        # self.net = model_lstm.LSTM1(14)
 
         #NET=TSMixer
-        #self.net = TSMixer.Model(sensors=14, e_layers=4, d_model=36, seq_len=50, pred_len=1, dropout=0.2) #SOTA_for now
+        # self.net = TSMixer.Model(sensors=14, e_layers=4, d_model=36, seq_len=50, pred_len=1, dropout=0.2) #SOTA_for now
 
         #NET=Encoder
+        self.net = model_encoder.TCNN_TransEncoder()
 
         #NET=LSTM
 
@@ -317,7 +320,7 @@ if __name__ == '__main__':
         args.k = 1
         args.batch_size = 100
         args.conv_kernel = 2
-        args.lr = 1e-3
+        args.lr = 5e-3
         args.moving_window = [2, 2]
         args.stride = [1, 2]
         args.pool_choice = 'mean'
@@ -357,7 +360,7 @@ if __name__ == '__main__':
             args.num_windows = 36
             args.lstmout_dim = 6
             args.hidden_dim = 24
-            args.window_sample = 30
+            args.window_sample = 50
             args.conv_time_CNN = 25
             args.lstmhidden_dim = 8
             args.test_engine_num = 100
@@ -378,7 +381,7 @@ if __name__ == '__main__':
 
         return args
 
-    data_sub = 4
+    data_sub = 1
     args = args_config(data_sub, args)
     train = Train(args)
     RMSE, test_score, result_predicted, result_real = train.Train_model()
