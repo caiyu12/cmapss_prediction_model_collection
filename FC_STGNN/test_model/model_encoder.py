@@ -9,7 +9,7 @@ EFF_SENSORS = 14
 # EFF_SENSORS=14 + 3
 FEATURE_NUM = EFF_SENSORS + ceil(EFF_SENSORS/16)
 
-WINDOW_SIZE = 30
+WINDOW_SIZE = 50
 SLIDING_STEP = 1 # positive integer
 
 
@@ -61,7 +61,7 @@ class TCNN_TransEncoder(nn.Module):
             dropout=DROPOUT,
             activation='relu',
 
-            bias=True
+            # bias=True
         )
         self.Trans_Encoder = nn.TransformerEncoder(
             __encoder_layer,
