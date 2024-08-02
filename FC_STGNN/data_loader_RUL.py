@@ -327,42 +327,42 @@ class CMPDataIter(data.IterableDataset):
         # For the test labels, only 1 RUL is required per engine which is the last columns on each engine
         return data_matrix[-1,:]
     
-    def reset(self, mode):
-
-        if mode == 'train':
-            self.mode = 'train'
-            val_fold_ind = self.val_fold % 5
-
-            train_x = list(self.folded_train_x)
-            train_y = list(self.folded_train_y)
-
-            self.cross_val_x = train_x.pop(val_fold_ind)
-
-            self.cross_val_y = train_y.pop(val_fold_ind)
-
-            self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3] 
-
-            self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3]
-
-            self.val_fold += 1
-
-            self.out_x = self.cross_train_x
-
-            self.out_y = self.cross_train_y
-            self.end = len(self.out_x)
-        elif mode == 'val':
-            self.mode = 'val'
-            self.out_x = self.cross_val_x
-
-            self.out_y = self.cross_val_y
-            self.end = len(self.out_x)
-
-        elif mode == 'test':
-            self.mode == 'test'
-            self.out_x = self.test_x
-            self.out_y = self.test_y
-
-            self.end = len(self.out_x)
+    # def reset(self, mode):
+    #
+    #     if mode == 'train':
+    #         self.mode = 'train'
+    #         val_fold_ind = self.val_fold % 5
+    #
+    #         train_x = list(self.folded_train_x)
+    #         train_y = list(self.folded_train_y)
+    #
+    #         self.cross_val_x = train_x.pop(val_fold_ind)
+    #
+    #         self.cross_val_y = train_y.pop(val_fold_ind)
+    #
+    #         self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3]
+    #
+    #         self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3]
+    #
+    #         self.val_fold += 1
+    #
+    #         self.out_x = self.cross_train_x
+    #
+    #         self.out_y = self.cross_train_y
+    #         self.end = len(self.out_x)
+    #     elif mode == 'val':
+    #         self.mode = 'val'
+    #         self.out_x = self.cross_val_x
+    #
+    #         self.out_y = self.cross_val_y
+    #         self.end = len(self.out_x)
+    #
+    #     elif mode == 'test':
+    #         self.mode == 'test'
+    #         self.out_x = self.test_x
+    #         self.out_y = self.test_y
+    #
+    #         self.end = len(self.out_x)
 
     def initial(self):
 
@@ -372,13 +372,15 @@ class CMPDataIter(data.IterableDataset):
 
         train_y = list(self.folded_train_y)
 
-        self.cross_val_x = train_x.pop(val_fold_ind)
+        # self.cross_val_x = train_x.pop(val_fold_ind)
+        # self.cross_val_y = train_y.pop(val_fold_ind)
+        # self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3]
+        # self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3]
+        self.cross_val_x = train_x[0]
+        self.cross_val_y = train_y[0]
+        self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3] + train_x[4]
+        self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3] + train_y[4]
 
-        self.cross_val_y = train_y.pop(val_fold_ind)
-
-        self.cross_train_x = train_x[0] + train_x[1] + train_x[2] + train_x[3]
-
-        self.cross_train_y = train_y[0] + train_y[1] + train_y[2] + train_y[3]
 
         self.out_x = self.cross_train_x
 

@@ -367,8 +367,7 @@ if __name__ == '__main__':
 
         return args
 
-    data_sub = 4
+    data_sub = 1
     args = args_config(data_sub, args)
     train = Train(args)
-    RMSE, test_score, result_predicted, result_real = train.Train_model()
-    visualize(result=result_predicted, y_test=result_real, num_test=100, rmse=RMSE, data_sub=data_sub)
+    train.Train_model()
