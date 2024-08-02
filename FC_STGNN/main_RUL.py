@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pandas as pd
-from test_model import model_cnn
+from test_model import TSMixer
 from data_loader_RUL import MyCMPDataIter
 import matplotlib.pyplot as plt
 import random
@@ -43,9 +43,9 @@ class Train():
         # self.val_data = self.data_preprocess_transpose(self.val_data)
 
         # self.net = Model.FC_STGNN_RUL(args.patch_size,args.conv_out, args.lstmhidden_dim, args.lstmout_dim,args.conv_kernel, args.hidden_dim,args.conv_time_CNN, args.num_sensor, args.num_windows,args.moving_window,args.stride, args.decay, args.pool_choice, 1)
-        self.net = model_cnn.TCNN_base(WINDOW_SIZE= args.window_sample, FC_DROPOUT=0.2)
+        # self.net = model_cnn.TCNN_base(WINDOW_SIZE= args.window_sample, FC_DROPOUT=0.2)
         #self.net = model_lstm.LSTM1(14)
-        #self.net = TSMixer.Model(sensors=14, e_layers=4, d_model=36, seq_len=50, pred_len=1, dropout=0.2) #SOTA_for now
+        self.net = TSMixer.Model(sensors=14, e_layers=4, d_model=36, seq_len=50, pred_len=1, dropout=0.2) #SOTA_for now
 
         self.net = self.net.cuda() if tr.cuda.is_available() else self.net
         self.loss_function = nn.MSELoss()
@@ -367,7 +367,7 @@ if __name__ == '__main__':
 
         return args
 
-    data_sub = 1
+    data_sub = 2
     args = args_config(data_sub, args)
     train = Train(args)
     train.Train_model()
