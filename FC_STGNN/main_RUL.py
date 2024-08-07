@@ -7,19 +7,19 @@ from test_model import TSMixer
 from data_loader_RUL import MyCMPDataIter
 import matplotlib.pyplot as plt
 import random
-import visualize
 
 class Train():
     def __init__(self, args):
 
-
-        data_iter = MyCMPDataIter('./',
-                                data_set='FD00{}'.format(str(args.data_sub)),
-                                max_rul=args.max_rul,
-                                seq_len=args.patch_size,
-                                time_denpen_len=args.time_denpen_len,
-                                window_sample=args.window_sample,
-                                net_name=1)
+        data_iter = MyCMPDataIter(
+            directory='./',
+            data_set='FD00{}'.format(str(args.data_sub)),
+            max_rul=args.max_rul,
+            seq_len=args.patch_size,
+            time_denpen_len=args.time_denpen_len,
+            window_sample=args.window_sample,
+            net_name=1
+        )
 
 
         self.args = args
@@ -367,7 +367,7 @@ if __name__ == '__main__':
 
         return args
 
-    data_sub = 2
+    data_sub = 4
     args = args_config(data_sub, args)
     train = Train(args)
     train.Train_model()

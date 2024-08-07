@@ -41,9 +41,9 @@ class ResBlock(nn.Module):
 #              for _ in range(e_layers)]
 #         )
 
-class Model(nn.Module):
+class TSMixer(nn.Module):
     def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout):
-        super(Model, self).__init__()
+        super(TSMixer, self).__init__()
         self.layer = e_layers
         self.model = nn.ModuleList(
             [ResBlock(sensors, seq_len, d_model, dropout)

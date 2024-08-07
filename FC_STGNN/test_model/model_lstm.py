@@ -19,7 +19,7 @@ DEVICE = (
 CPU = "cpu"
 
 
-class LSTM1(nn.Module):
+class LSTM_NET(nn.Module):
     """LSTM architecture"""
 
     def __init__(self, input_size, seq_length=1):

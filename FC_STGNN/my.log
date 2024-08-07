@@ -1,10 +1,4 @@
-Sat 03 Aug 2024 00:10:03 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train dataset: 'FD002', shape: (53759, 26))
-Sat 03 Aug 2024 00:10:03 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test dataset: 'FD002', shape: (33991, 26))
-Sat 03 Aug 2024 00:10:03 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train engine number: 260)
-Sat 03 Aug 2024 00:10:03 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test engine number: 259)
-Sat 03 Aug 2024 00:10:03 data_loader_RUL.py INFO CMPDataIter:: data includes multi operating conditions
-Sat 03 Aug 2024 00:10:04 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train data shape: 41019)
-Sat 03 Aug 2024 00:10:04 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train label shape: 41019)
-Sat 03 Aug 2024 00:10:04 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test data shape: 259)
-Sat 03 Aug 2024 00:10:04 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test label shape: 259)
-Sat 03 Aug 2024 00:10:04 data_loader_RUL.py INFO CMPDataIter:: initialize the dataset
+Mon 05 Aug 2024 00:54:04 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train dataset: 'FD004', shape: (61249, 26))
+Mon 05 Aug 2024 00:54:04 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test dataset: 'FD004', shape: (41214, 26))
+Mon 05 Aug 2024 00:54:06 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (train engine number: 249)
+Mon 05 Aug 2024 00:54:08 data_loader_RUL.py INFO CMPDataIter:: iterator initialized (test engine number: 248)
