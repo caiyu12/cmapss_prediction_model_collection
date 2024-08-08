@@ -50,6 +50,7 @@ class Permute(nn.Module):
 class TCNN_TransEncoder(nn.Module):
     def __init__(self):
         super(TCNN_TransEncoder, self).__init__()
+        self.name = 'TCNN-TransEncoder'
 
         __encoder_layer = nn.TransformerEncoderLayer(
             batch_first=True,

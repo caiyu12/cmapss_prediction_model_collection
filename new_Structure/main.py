@@ -6,6 +6,7 @@ import torch
 import numpy
 import pandas
 import matplotlib.pyplot as plt
+import os
 
 class Train():
     def __init__(self, arg : Namespace, model) -> None:
@@ -16,7 +17,7 @@ class Train():
         self.loss_function = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=arg.learning_rate)
 
-    def Train_Test(self):
+    def Train_Test(self)->float:
         test_RMSE_best = numpy.inf
         for epoch in range(1, self.arg.epoch + 1):
             train_loss = 0
@@ -37,24 +38,28 @@ class Train():
 
                 del data, target, outputs
 
-            self.net.eval()
-            for data, target in self.data.test_dataloader:
-                data, target = data.to(self.arg.device), target.to(self.arg.device)
+            with torch.no_grad():
+                self.net.eval()
+                for data, target in self.data.test_dataloader:
+                    data, target = data.to(self.arg.device), target.to(self.arg.device)
 
-                outputs = self.net(data)
+                    outputs = self.net(data)
 
-                test_RMSE  += pow(self.loss_function(outputs, target).item(), 0.5)
-                test_score += self.score_function(outputs, target).item()
+                    test_RMSE  += pow(self.loss_function(outputs, target).item(), 0.5)
+                    test_score += self.score_function(outputs, target).item()
                 #
                 # del data, target, outputs
             outputs_cpu = outputs.cpu().detach().numpy()*self.arg.max_rul
             target_cpu  = target.cpu().detach().numpy()*self.arg.max_rul
             test_RMSE   = test_RMSE*self.arg.max_rul
 
-            if test_RMSE < test_RMSE_best:
+            # if test_RMSE < test_RMSE_best:
+            if True:
                 test_RMSE_best = test_RMSE
                 print('Epoch: {:03d}, Train Loss: {:.4f}, Test RMSE: {:.4f}, Test Score: {:.4f}'.format(epoch, train_loss, test_RMSE, test_score))
                 self.visualize(outputs_cpu, target_cpu, test_RMSE)
+
+        return float(test_RMSE_best)
 
 
     def score_function(self, predicted, real):
@@ -95,22 +100,46 @@ class Train():
 
         plt.plot(true_rul, label='Actual RUL')  # actual plot
         plt.plot(pred_rul, label='Predicted RUL RMSE = {})'.format(round(rmse, 3)))  # predicted plot
-        plt.title('Remaining Useful Life Prediction')
+        plt.title('Remaining Useful Life Prediction--{}'.format(self.arg.model_name))
         plt.legend()
 
         plt.xlabel("Samples")
         plt.ylabel("Remaining Useful Life")
         plt.show()
 
+    def save_best_model_param(self, new_criterion_value : float):
+        new_criterion_value = round(new_criterion_value, 3)
 
+        file_dir = os.path.join('./param_model', self.arg.dataset)
+        file_list = os.listdir(file_dir)
 
+        new_file = os.path.join(file_dir, str(new_criterion_value) + '_' + self.arg.model_name + '.pth')
+
+        file_num  = len(file_list)
+        match file_num:
+            case 0:
+                torch.save(self.net, new_file)
+
+            case 1:
+                old_file_name = file_list[0]
+                old_file = os.path.join(file_dir, old_file_name)
+                old_criterion_value = float(old_file_name.split('.')[0].split('_')[0])
+
+                if new_criterion_value < old_criterion_value:
+                    os.remove(old_file)
+                    torch.save(self.net, new_file)
+                else:
+                    pass
+
+            case _:
+                IOError('param_model directory structure error, please check it.')
 
 
 def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
         directory = '.\\',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 41,
+        epoch     = 5,
         device    = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
@@ -140,12 +169,16 @@ def args_config(dataset_choice : int) -> Namespace:
     return arguments
 
 def main() -> None:
+    # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=4,
+        dataset_choice=1,
     )
     model = TSMixer(sensors=14, e_layers=4, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    args.model_name = model.name
+
     train = Train(args, model)
-    train.Train_Test()
+    rmse = train.Train_Test()
+    train.save_best_model_param(rmse)
 
 
 if __name__ == '__main__':

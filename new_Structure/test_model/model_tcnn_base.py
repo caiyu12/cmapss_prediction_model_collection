@@ -28,6 +28,7 @@ class nnPermute(nn.Module):
 class TCNN_base(nn.Module):
     def __init__(self, WINDOW_SIZE, FC_DROPOUT):
         super(TCNN_base, self).__init__()
+        self.name = 'TCNN'
 
         self.TCNN = nn.Sequential(
             nn.Conv1d(

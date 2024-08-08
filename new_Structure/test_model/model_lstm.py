@@ -26,6 +26,7 @@ class LSTM_NET(nn.Module):
         # super(LSTM1, self).__init__()
         # nn.Module.__init__(self)
         super().__init__()
+        self.name = 'LSTM-Net'
 
         self.input_size = input_size  # input size
         self.hidden_size = N_HIDDEN  # hidden state
