@@ -49,8 +49,8 @@ class CMAPSS_Data_Process():
         train_data_df = pd.read_csv(train_data_pt, sep=r'\s+', header=None, names=column_names)
         test_data_df  = pd.read_csv(test_data_pt, sep=r'\s+', header=None, names=column_names)
         test_target_df = pd.read_csv(test_truth_pt, sep=r'\s+', header=None, names=['RUL'])
-        train_engine_num = train_data_df['id'].unique()
-        test_engine_num  = test_data_df['id'].unique()
+        train_engine_num = train_data_df['id'].nunique()
+        test_engine_num  = test_data_df['id'].nunique()
 
         (train_data, train_target,
          test_data, test_target) = self.dataProcess(train_data_df, test_data_df, test_target_df, max_rul)
@@ -76,7 +76,7 @@ class CMAPSS_Data_Process():
         )
         test_dataloader = DataLoader(
             dataset=test_dataset,
-            batch_size=1,
+            batch_size=test_engine_num,
             shuffle=False,
             drop_last=False,
             num_workers=0,
@@ -108,7 +108,7 @@ class CMAPSS_Data_Process():
         test_targ = pd.DataFrame(data=test_truth).reset_index()
         test_targ = test_targ.rename(columns={'index' : 'id', 'RUL' : 'target'})
         test_targ['id'] = test_targ['id'] + 1
-        test_targ['target'] = test_targ['target'].clip(125)
+        test_targ['target'] = test_targ['target'].clip(upper=125)
 
         test_data.drop(['s1', 's5', 's6', 's10', 's16', 's18', 's19'], axis =1, inplace = True)
 

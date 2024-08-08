@@ -88,7 +88,7 @@ class TrainDataset(Dataset):
                 __targ_engine_indiv[__targ_missing_row:, :] = torch.tensor(data=__targ_engine_origin[:, :], dtype=torch.float32)
 
                 self.targ_list.append(__targ_engine_indiv)
-                print('Engine {} used padding'.format(i))
+                print('TRAIN: Engine {} used padding: {} -> {}'.format(i, __targ_engine_origin.shape[0], self.window_size))
             else:
                 __targ_engine_indiv = torch.tensor(data=__targ_engine_origin, dtype=torch.float32)
                 self.targ_list.append(__targ_engine_indiv)
@@ -135,7 +135,7 @@ class TestDataset(Dataset):
                 __data_engine_indiv[__data_missing_row:, :] = torch.tensor(data=__data_engine_origin[:, :], dtype=torch.float32)
 
                 self.data_list.append(__data_engine_indiv)
-                print('TEST: Engine {} used padding'.format(i))
+                print('TEST: Engine {} used padding: {} -> {}'.format(i, __data_engine_origin.shape[0], self.window_size))
             else:
                 __data_engine_indiv = torch.tensor(data=__data_engine_origin, dtype=torch.float32)
                 self.data_list.append(__data_engine_indiv)
