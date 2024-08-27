@@ -170,11 +170,11 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=4,
     )
-    model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
-    # model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
     args.model_name = model.name
 
     train = Train(args, model)
