@@ -46,9 +46,9 @@ class ResBlock(nn.Module):
 #         )
 
 class LSTM_TSMixer(nn.Module):
-    def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout):
+    def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout, accept_window):
         super(LSTM_TSMixer, self).__init__()
-        self.name = 'TSMixer'
+        self.name = 'LSTM_TSMixer'
         self.layer = e_layers
         self.model = nn.ModuleList(
             [ResBlock(sensors, seq_len, d_model, dropout)
@@ -68,9 +68,11 @@ class LSTM_TSMixer(nn.Module):
             # nn.Dropout(dropout)
         )
         self.lstm = nn.LSTM(input_size=sensors, hidden_size=sensors, num_layers=1, batch_first=True)
+        self.accept_window = accept_window
 
     def forecast(self, x_enc):
         x_enc, _ = self.lstm(x_enc)
+        x_enc = x_enc[:, -self.accept_window:, :].contiguous()
 
         # x: [B, L, D]
         for i in range(self.layer):

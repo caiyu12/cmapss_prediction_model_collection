@@ -20,43 +20,62 @@ class Train():
     def Train_Test(self)->float:
         test_RMSE_best = numpy.inf
         for epoch in range(1, self.arg.epoch + 1):
-            train_loss = 0
-            test_RMSE  = 0
-            test_score = 0
+            for window_size in self.arg.window_size_tuple:
 
-            self.net.train()
-            for data, target in self.data.train_dataloader:
-                data, target = data.to(self.arg.device), target.to(self.arg.device)
+                train_loss = 0
+                test_RMSE  = 0
+                test_score = 0
 
-                outputs = self.net(data)
-
-                self.optimizer.zero_grad()
-                loss = self.loss_function(outputs, target)
-                train_loss += loss.item()
-                loss.backward()
-                self.optimizer.step()
-
-                del data, target, outputs
-
-            with torch.no_grad():
-                self.net.eval()
-                for data, target in self.data.test_dataloader:
+                self.net.train()
+                train_dataloader = self.data.getTrainDataloader(
+                    window_size=window_size,
+                    batch_size=self.arg.batch_size,
+                    memory_pinned=self.arg.memory_pinned
+                )
+                for data, target in train_dataloader:
                     data, target = data.to(self.arg.device), target.to(self.arg.device)
+                    output = self.net(data)
 
-                    outputs = self.net(data)
+                    self.optimizer.zero_grad()
+                    loss = self.loss_function(output, target)
+                    train_loss += loss.item()
+                    loss.backward()
+                    self.optimizer.step()
 
-                    test_RMSE  += pow(self.loss_function(outputs, target).item(), 0.5)
-                    test_score += self.score_function(outputs, target).item()
-                #
-                # del data, target, outputs
-            outputs_cpu = outputs.cpu().detach().numpy()*self.arg.max_rul
-            target_cpu  = target.cpu().detach().numpy()*self.arg.max_rul
-            test_RMSE   = test_RMSE*self.arg.max_rul
+                    del data, target, output
 
-            if test_RMSE < test_RMSE_best:
-                test_RMSE_best = test_RMSE
-                print('Epoch: {:03d}, Train Loss: {:.4f}, Test RMSE: {:.4f}, Test Score: {:.4f}'.format(epoch, train_loss, test_RMSE, test_score))
-                self.visualize(outputs_cpu, target_cpu, test_RMSE)
+
+                with torch.no_grad():
+                    self.net.eval()
+                    test_dataloader = self.data.getTestDataloader(
+                        batch_size=1,
+                        memory_pinned=self.arg.memory_pinned
+                    )
+                    i = 0
+                    outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
+                    for data, target in test_dataloader:
+                        data, target = data.to(self.arg.device), target.to(self.arg.device)
+                        output = self.net(data)
+
+                        outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
+                        i += 1
+
+                        del data, target, output
+
+                test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
+                test_score  = self.score_function(outputs, targets).item()
+                outputs_cpu = outputs.numpy()*self.arg.max_rul
+                targets_cpu = targets.numpy()*self.arg.max_rul
+                test_RMSE   = test_RMSE*self.arg.max_rul
+
+                if test_RMSE < test_RMSE_best:
+                    test_RMSE_best = test_RMSE
+                    print('Epoch: {:03d}, '
+                          'Train Loss: {:.4f}, '
+                          'Test RMSE: {:.4f}, '
+                          'Test Score: {:.4f}, '
+                          'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
+                    self.visualize(outputs_cpu, targets_cpu, test_RMSE)
 
         return float(test_RMSE_best)
 
@@ -148,19 +167,24 @@ def args_config(dataset_choice : int) -> Namespace:
     )
     match dataset_choice:
         case 1:
-            arguments.windows_size = 50
-            arguments.batch_size   = 100
+            arguments.accept_window = 50
+            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.batch_size    = 100
+
         case 2:
-            arguments.windows_size = 50
-            arguments.batch_size   = 100
+            arguments.accept_window = 50
+            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.batch_size    = 100
 
         case 3:
-            arguments.windows_size = 30
-            arguments.batch_size   = 100
+            arguments.accept_window = 30
+            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.batch_size    = 100
 
         case 4:
-            arguments.windows_size = 50
-            arguments.batch_size   = 100
+            arguments.accept_window = 50
+            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.batch_size    = 100
 
         case _:
             raise ValueError("Invalid dataset choice")
@@ -170,11 +194,11 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=2,
     )
-    model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
-    # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
-    # model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
+    # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
+    model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
 
     train = Train(args, model)

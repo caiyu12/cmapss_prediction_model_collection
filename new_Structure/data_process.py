@@ -12,24 +12,18 @@ import torch
 class CMAPSS_Data_Process():
     def __init__(self, arg: Namespace) -> None:
         self.arg = arg
-        self.train_dataloader, self.test_dataloader = self.loadData(
-            root          = self.arg.directory,
-            dataset       = self.arg.dataset,
-            max_rul       = self.arg.max_rul,
-            window_size   = self.arg.windows_size,
-            batch_size    = self.arg.batch_size,
-            memory_pinned = self.arg.memory_pinned
+        self.loadData(
+            root=self.arg.directory,
+            dataset=self.arg.dataset,
+            max_rul=self.arg.max_rul
         )
 
     def loadData(
-        self,
-        root : str,
-        dataset   : str,
-        max_rul   : int,
-        window_size : int,
-        batch_size   : int,
-        memory_pinned: bool
-    ) -> (DataLoader, DataLoader):
+            self,
+            root : str,
+            dataset   : str,
+            max_rul   : int,
+    ) -> None:
         train_data_pt = os.path.join(root, 'CMAPSSData',  'train_'+ dataset +'.txt')
         assert os.path.exists(train_data_pt), 'data path does not exist: {:}'.format(train_data_pt)
 
@@ -49,23 +43,24 @@ class CMAPSS_Data_Process():
         train_data_df = pd.read_csv(train_data_pt, sep=r'\s+', header=None, names=column_names)
         test_data_df  = pd.read_csv(test_data_pt, sep=r'\s+', header=None, names=column_names)
         test_target_df = pd.read_csv(test_truth_pt, sep=r'\s+', header=None, names=['RUL'])
-        train_engine_num = train_data_df['id'].nunique()
-        test_engine_num  = test_data_df['id'].nunique()
+        self.train_engine_num = train_data_df['id'].nunique()
+        self.test_engine_num  = test_data_df['id'].nunique()
 
-        (train_data, train_target,
-         test_data, test_target) = self.dataProcess(train_data_df, test_data_df, test_target_df, max_rul)
+        (self.train_data, self.train_target,
+         self.test_data, self.test_target) = self.dataProcess(train_data_df, test_data_df, test_target_df, max_rul)
+
+    def getTrainDataloader(
+            self,
+            window_size : int,
+            batch_size  : int,
+            memory_pinned: bool
+    ) -> DataLoader:
 
         train_dataset = TrainDataset(
-            data_group=train_data,
-            targ_group=train_target,
-            window_size=window_size
+        data_group=self.train_data,
+        targ_group=self.train_target,
+        window_size=window_size
         )
-        test_dataset = TestDataset(
-            data_group=test_data,
-            targ_group=test_target,
-            window_size=window_size
-        )
-
         train_dataloader = DataLoader(
             dataset=train_dataset,
             batch_size=batch_size,
@@ -74,23 +69,35 @@ class CMAPSS_Data_Process():
             num_workers=0,
             pin_memory=memory_pinned
         )
+
+        return train_dataloader
+
+    def getTestDataloader(self, batch_size: int, memory_pinned: bool) -> DataLoader:
+        # REMIND: Here batch_size must be 1
+        test_dataset = TestDataset(
+            data_group=self.test_data,
+            targ_group=self.test_target,
+            accept_window=self.arg.accept_window
+        )
         test_dataloader = DataLoader(
             dataset=test_dataset,
-            batch_size=test_engine_num,
+            batch_size=batch_size,
             shuffle=False,
             drop_last=False,
             num_workers=0,
             pin_memory=memory_pinned
         )
-        return train_dataloader, test_dataloader
+
+        return test_dataloader
+
 
 
     def dataProcess(
-        self,
-        train_data : pd.DataFrame,
-        test_data  : pd.DataFrame,
-        test_truth : pd.DataFrame,
-        max_rul    : int
+            self,
+            train_data : pd.DataFrame,
+            test_data  : pd.DataFrame,
+            test_truth : pd.DataFrame,
+            max_rul    : int
     ) -> (DataFrameGroupBy, DataFrameGroupBy, DataFrameGroupBy, DataFrameGroupBy):
         # Processing train data
         tmp_train_RUL = pd.DataFrame(train_data.groupby('id')['cycle'].max()).reset_index()

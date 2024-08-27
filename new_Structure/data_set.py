@@ -88,7 +88,7 @@ class TrainDataset(Dataset):
                 __targ_engine_indiv[__targ_missing_row:, :] = torch.tensor(data=__targ_engine_origin[:, :], dtype=torch.float32)
 
                 self.targ_list.append(__targ_engine_indiv)
-                print('TRAIN: Engine {} used padding: {} -> {}'.format(i, __targ_engine_origin.shape[0], self.window_size))
+                # print('TRAIN: Engine {} used padding: {} -> {}'.format(i, __targ_engine_origin.shape[0], self.window_size))
             else:
                 __targ_engine_indiv = torch.tensor(data=__targ_engine_origin, dtype=torch.float32)
                 self.targ_list.append(__targ_engine_indiv)
@@ -113,29 +113,29 @@ class TestDataset(Dataset):
             self,
             data_group : DataFrameGroupBy,
             targ_group : DataFrameGroupBy,
-            window_size: int,
+            accept_window : int,
     ) -> None:
         assert data_group.ngroups == targ_group.ngroups, 'Testing data and target group must have the same number of groups'
 
         self.num_total  = data_group.ngroups
         self.data_group = data_group
         self.targ_group = targ_group
-        self.window_size = window_size
+        self.accept_window = accept_window
 
         self.data_list = list()
         self.targ_list = list()
         for i in range(1, self.num_total + 1):
             __data_engine_origin = self.data_group.get_group(i).to_numpy()
 
-            if window_size > __data_engine_origin.shape[0]: # REMIND:padding using the first row
-                __data_missing_row = self.window_size - __data_engine_origin.shape[0]
+            if accept_window > __data_engine_origin.shape[0]: # REMIND:padding using the first row
+                __data_missing_row = self.accept_window - __data_engine_origin.shape[0]
 
-                __data_engine_indiv = torch.zeros(size=(self.window_size, __data_engine_origin.shape[1]), dtype=torch.float32)
+                __data_engine_indiv = torch.zeros(size=(self.accept_window, __data_engine_origin.shape[1]), dtype=torch.float32)
                 __data_engine_indiv[:__data_missing_row, :] = torch.tensor(data=__data_engine_origin[0, :], dtype=torch.float32)
                 __data_engine_indiv[__data_missing_row:, :] = torch.tensor(data=__data_engine_origin[:, :], dtype=torch.float32)
 
                 self.data_list.append(__data_engine_indiv)
-                print('TEST: Engine {} used padding: {} -> {}'.format(i, __data_engine_origin.shape[0], self.window_size))
+                # print('TEST: Engine {} used padding: {} -> {}'.format(i, __data_engine_origin.shape[0], self.accept_window))
             else:
                 __data_engine_indiv = torch.tensor(data=__data_engine_origin, dtype=torch.float32)
                 self.data_list.append(__data_engine_indiv)
@@ -149,7 +149,7 @@ class TestDataset(Dataset):
         return self.num_total
 
     def __getitem__(self, index):
-        test_tensor = self.data_list[index][-self.window_size:, 1:]
+        test_tensor = self.data_list[index][:, 1:]
 
         target_tensor = self.targ_list[index][0, 1:]
 
