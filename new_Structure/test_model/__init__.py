@@ -3,3 +3,4 @@ from .model_tcnn_base import TCNN_base
 from .model_lstm import LSTM_NET
 from .TSMixer import TSMixer
 from .parallel_TSMixer import parallel_TSMixer
+from .LSTM_TSMixer import LSTM_TSMixer
