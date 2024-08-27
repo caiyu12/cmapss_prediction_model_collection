@@ -53,8 +53,7 @@ class Train():
             target_cpu  = target.cpu().detach().numpy()*self.arg.max_rul
             test_RMSE   = test_RMSE*self.arg.max_rul
 
-            # if test_RMSE < test_RMSE_best:
-            if True:
+            if test_RMSE < test_RMSE_best:
                 test_RMSE_best = test_RMSE
                 print('Epoch: {:03d}, Train Loss: {:.4f}, Test RMSE: {:.4f}, Test Score: {:.4f}'.format(epoch, train_loss, test_RMSE, test_score))
                 self.visualize(outputs_cpu, target_cpu, test_RMSE)
@@ -118,7 +117,7 @@ class Train():
         file_num  = len(file_list)
         match file_num:
             case 0:
-                torch.save(self.net, new_file)
+                torch.save(self.net.state_dict(), new_file)
 
             case 1:
                 old_file_name = file_list[0]
@@ -127,7 +126,7 @@ class Train():
 
                 if new_criterion_value < old_criterion_value:
                     os.remove(old_file)
-                    torch.save(self.net, new_file)
+                    torch.save(self.net.state_dict(), new_file)
                 else:
                     pass
 
@@ -139,7 +138,7 @@ def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
         directory = '.\\',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 5,
+        epoch     = 10,
         device    = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
@@ -173,7 +172,8 @@ def main() -> None:
     args = args_config(
         dataset_choice=1,
     )
-    model = TSMixer(sensors=14, e_layers=4, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
     args.model_name = model.name
 
     train = Train(args, model)

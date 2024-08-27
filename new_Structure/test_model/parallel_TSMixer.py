@@ -30,12 +30,17 @@ class ResBlock(nn.Module):
             nn.Dropout(dropout)
         )
 
+        self.temporal_conv = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(1, 1), stride=1, padding=0)
+        self.channel_conv  = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(1, 1), stride=1, padding=0)
+
     def forward(self, x):
         # x: [B, L, D]
-        x = x + self.temporal(x.transpose(1, 2)).transpose(1, 2)
-        x = x + self.channel(x)
+        x_tprl = x + self.temporal(x.transpose(1, 2)).transpose(1, 2)
+        x_chnl = x + self.channel(x)
 
-        return x
+        x_out = self.temporal_conv(x_tprl.unsqueeze(1)).squeeze(1) + self.channel_conv(x_chnl.unsqueeze(1)).squeeze(1)
+
+        return x_out
 
 # class Mixup(nn.Module):
 #     def __init__(self, sensors, e_layers, seq_len, d_model, dropout):
@@ -45,14 +50,14 @@ class ResBlock(nn.Module):
 #              for _ in range(e_layers)]
 #         )
 
-class TSMixer(nn.Module):
+class parallel_TSMixer(nn.Module):
     def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout):
-        super(TSMixer, self).__init__()
+        super(parallel_TSMixer, self).__init__()
         self.name = 'TSMixer'
         self.layer = e_layers
         self.model = nn.ModuleList(
             [ResBlock(sensors, seq_len, d_model, dropout)
-                                    for _ in range(e_layers)]
+             for _ in range(e_layers)]
         )
         self.pred_len = pred_len
         # self.projection = nn.Linear(seq_len, pred_len)
