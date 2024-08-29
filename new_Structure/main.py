@@ -6,6 +6,7 @@ import torch
 import numpy
 import pandas
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import os
 
 class Train():
@@ -113,12 +114,40 @@ class Train():
         # the predicted remaining useful life of the testing samples
         pred_rul = result.iloc[:, 1].to_numpy()
 
+
         plt.figure(figsize=(10, 6))  # plotting
         plt.axvline(x=num_test, c='r', linestyle='--')  # size of the training set
 
-        plt.plot(true_rul, label='Actual RUL')  # actual plot
-        plt.plot(pred_rul, label='Predicted RUL RMSE = {})'.format(round(rmse, 3)))  # predicted plot
-        plt.title('Remaining Useful Life Prediction--{}'.format(self.arg.model_name))
+        plt.plot(
+            true_rul,
+            color='blue',
+            label='Actual RUL',
+            linewidth=4,
+            zorder=0,
+        )  # actual plot
+
+        # differences outside -10 to 10 will be printed as prue color
+        max_difference_clip =  15
+        min_difference_clip = -20
+        differences = pred_rul - true_rul
+        cliped_diff = differences.clip(min_difference_clip, max_difference_clip)
+        normed_diff = (cliped_diff - min_difference_clip) / (max_difference_clip - min_difference_clip)
+
+        colors = ['green', 'blue', 'red']
+        nodes = [0, 0.5, 1]  # 0: far below, 0.5: same, 1: far above
+        color_map = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
+        plt.scatter(
+            x=range(len(pred_rul)),
+            y=pred_rul,
+            c=normed_diff,
+            cmap=color_map,
+            edgecolor='k',
+            s=100,
+            label='Predicted RUL RMSE = {})'.format(round(rmse, 3)),
+            zorder=1,
+        )  # predicted plot
+
+        plt.title('Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset))
         plt.legend()
 
         plt.xlabel("Samples")
@@ -168,22 +197,23 @@ def args_config(dataset_choice : int) -> Namespace:
     match dataset_choice:
         case 1:
             arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.batch_size    = 100
 
         case 2:
             arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.batch_size    = 100
 
         case 3:
-            arguments.accept_window = 30
-            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.accept_window = 50
+            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.batch_size    = 100
 
         case 4:
-            arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 90, 120,)
+            arguments.accept_window = 40
+            # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
+            arguments.window_size_tuple = (arguments.accept_window, 50, 60, 70)
             arguments.batch_size    = 100
 
         case _:
@@ -194,11 +224,12 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=2,
+        dataset_choice=4,
     )
     # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
     model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
+    # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
 
     train = Train(args, model)
