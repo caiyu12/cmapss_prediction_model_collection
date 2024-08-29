@@ -114,11 +114,10 @@ class Train():
         # the predicted remaining useful life of the testing samples
         pred_rul = result.iloc[:, 1].to_numpy()
 
+        fig, ax = plt.subplots(figsize=(10, 6))
+        # plt.axvline(x=num_test, c='r', linestyle='--')  # size of the training set
 
-        plt.figure(figsize=(10, 6))  # plotting
-        plt.axvline(x=num_test, c='r', linestyle='--')  # size of the training set
-
-        plt.plot(
+        ax.plot(
             true_rul,
             color='blue',
             label='Actual RUL',
@@ -126,20 +125,20 @@ class Train():
             zorder=0,
         )  # actual plot
 
-        # differences outside -10 to 10 will be printed as prue color
-        max_difference_clip =  15
-        min_difference_clip = -20
-        differences = pred_rul - true_rul
-        cliped_diff = differences.clip(min_difference_clip, max_difference_clip)
-        normed_diff = (cliped_diff - min_difference_clip) / (max_difference_clip - min_difference_clip)
+        # err outside -10 to 10 will be printed as prue color
+        max_err_clip =  15
+        min_err_clip = -20
+        err = pred_rul - true_rul
+        cliped_err = err.clip(min_err_clip, max_err_clip)
+        cliped_normed_err = (cliped_err - min_err_clip) / (max_err_clip - min_err_clip)
 
-        colors = ['green', 'blue', 'red']
+        colors = ['green', 'white', 'red']
         nodes = [0, 0.5, 1]  # 0: far below, 0.5: same, 1: far above
         color_map = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
-        plt.scatter(
+        sc = ax.scatter(
             x=range(len(pred_rul)),
             y=pred_rul,
-            c=normed_diff,
+            c=cliped_normed_err,
             cmap=color_map,
             edgecolor='k',
             s=100,
@@ -147,11 +146,17 @@ class Train():
             zorder=1,
         )  # predicted plot
 
-        plt.title('Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset))
-        plt.legend()
+        # add color bar
+        cbar = plt.colorbar(sc, ax=ax)
+        cbar.set_label('ERROR (Pred RUL - True RUL)')
+        cbar.set_ticks([0, 0.5, 1])
+        cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
 
-        plt.xlabel("Samples")
-        plt.ylabel("Remaining Useful Life")
+        ax.set_title('Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset))
+        ax.legend()
+
+        ax.set_xlabel("Samples")
+        ax.set_ylabel("Remaining Useful Life")
         plt.show()
 
     def save_best_model_param(self, new_criterion_value : float):
@@ -197,7 +202,7 @@ def args_config(dataset_choice : int) -> Namespace:
     match dataset_choice:
         case 1:
             arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
+            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, )
             arguments.batch_size    = 100
 
         case 2:
@@ -226,16 +231,15 @@ def main() -> None:
     args = args_config(
         dataset_choice=4,
     )
-    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
+    model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
-    model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
+    # model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
 
     train = Train(args, model)
     rmse = train.Train_Test()
     train.save_best_model_param(rmse)
-
 
 if __name__ == '__main__':
     main()
