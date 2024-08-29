@@ -6,6 +6,7 @@ import torch
 import numpy
 import pandas
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import os
 
 class Train():
@@ -94,16 +95,49 @@ class Train():
         # the predicted remaining useful life of the testing samples
         pred_rul = result.iloc[:, 1].to_numpy()
 
-        plt.figure(figsize=(10, 6))  # plotting
-        plt.axvline(x=num_test, c='r', linestyle='--')  # size of the training set
+        fig, ax = plt.subplots(figsize=(10, 6))
+        # plt.axvline(x=num_test, c='r', linestyle='--')  # size of the training set
 
-        plt.plot(true_rul, label='Actual RUL')  # actual plot
-        plt.plot(pred_rul, label='Predicted RUL RMSE = {})'.format(round(rmse, 3)))  # predicted plot
-        plt.title('Remaining Useful Life Prediction--{}'.format(self.arg.model_name))
-        plt.legend()
+        ax.plot(
+            true_rul,
+            color='blue',
+            label='Actual RUL',
+            linewidth=4,
+            zorder=0,
+        )  # actual plot
 
-        plt.xlabel("Samples")
-        plt.ylabel("Remaining Useful Life")
+        # err outside -10 to 10 will be printed as prue color
+        max_err_clip =  15
+        min_err_clip = -20
+        err = pred_rul - true_rul
+        cliped_err = err.clip(min_err_clip, max_err_clip)
+        cliped_normed_err = (cliped_err - min_err_clip) / (max_err_clip - min_err_clip)
+
+        colors = ['green', 'white', 'red']
+        nodes = [0, 0.5, 1]  # 0: far below, 0.5: same, 1: far above
+        color_map = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
+        sc = ax.scatter(
+            x=range(len(pred_rul)),
+            y=pred_rul,
+            c=cliped_normed_err,
+            cmap=color_map,
+            edgecolor='k',
+            s=100,
+            label='Predicted RUL RMSE = {})'.format(round(rmse, 3)),
+            zorder=1,
+        )  # predicted plot
+
+        # add color bar
+        cbar = plt.colorbar(sc, ax=ax)
+        cbar.set_label('ERROR (Pred RUL - True RUL)')
+        cbar.set_ticks([0, 0.5, 1])
+        cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
+
+        ax.set_title('Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset))
+        ax.legend()
+
+        ax.set_xlabel("Samples")
+        ax.set_ylabel("Remaining Useful Life")
         plt.show()
 
     def save_best_model_param(self, new_criterion_value : float):
@@ -138,7 +172,7 @@ def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 10,
+        epoch     = 50,
         device    = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
@@ -172,9 +206,9 @@ def main() -> None:
     args = args_config(
         dataset_choice=4,
     )
-    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
-    model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
+    # model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.windows_size, pred_len=1, dropout=0.2)
     args.model_name = model.name
 
     train = Train(args, model)
