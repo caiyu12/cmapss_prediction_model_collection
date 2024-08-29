@@ -5,3 +5,4 @@ from .TSMixer import TSMixer
 from .parallel_TSMixer import parallel_TSMixer
 from .LSTM_TSMixer import LSTM_TSMixer
 from .Encoder_LSTM_TSMixer import ENCODER_LSTM_TSMixer
+from .Encoder_TSMixer import ENCODER_TSMixer

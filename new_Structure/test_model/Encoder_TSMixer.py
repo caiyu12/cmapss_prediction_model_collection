@@ -45,10 +45,10 @@ class ResBlock(nn.Module):
 #              for _ in range(e_layers)]
 #         )
 
-class ENCODER_LSTM_TSMixer(nn.Module):
-    def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout, accept_window,):
-        super(ENCODER_LSTM_TSMixer, self).__init__()
-        self.name = 'ENCODER_LSTM_TSMixer'
+class ENCODER_TSMixer(nn.Module):
+    def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout, accept_window):
+        super(ENCODER_TSMixer, self).__init__()
+        self.name = 'ENCODER_TSMixer'
         self.layer = e_layers
         self.model = nn.ModuleList(
             [ResBlock(sensors, seq_len, d_model, dropout)
@@ -67,29 +67,26 @@ class ENCODER_LSTM_TSMixer(nn.Module):
             # nn.ReLU(),
             # nn.Dropout(dropout)
         )
-        self.lstm = nn.LSTM(input_size=sensors, hidden_size=sensors, num_layers=1, batch_first=True)
         self.accept_window = accept_window
         '''
         /*-----------------------------------------------------------------------------*/
         '''
         __encoder_layer = nn.TransformerEncoderLayer(
             d_model=14,
-            nhead=1,
-            dim_feedforward=48,
-            dropout=0.1,
+            nhead=7,
+            dim_feedforward=36,
+            dropout=0.2,
             activation='relu',
             bias=True,
             batch_first=True
         )
         self.encoder = nn.TransformerEncoder(
             __encoder_layer,
-            num_layers=8
+            num_layers=4
         )
 
     def forecast(self, x_enc, mask):
         x_enc = self.encoder(x_enc, src_key_padding_mask=mask)
-
-        x_enc, _ = self.lstm(x_enc)
         x_enc = x_enc[:, -self.accept_window:, :].contiguous()
 
         # x: [B, L, D]

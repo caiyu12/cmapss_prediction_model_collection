@@ -65,11 +65,11 @@ class TrainDataset(Dataset):
 
         for i in range(1, self.num_total + 1):
             __data_engine_origin = self.data_group.get_group(i).to_numpy()
-            if i in __padding_list: # REMIND:padding using the first row
+            if i in __padding_list: # REMIND:padding using 0
                 __data_missing_row = self.window_size - __data_engine_origin.shape[0]
 
                 __data_engine_indiv = torch.zeros(size=(self.window_size, __data_engine_origin.shape[1]), dtype=torch.float32)
-                __data_engine_indiv[:__data_missing_row, :] = torch.tensor(data=__data_engine_origin[0, :], dtype=torch.float32)
+                # __data_engine_indiv[:__data_missing_row, :] = torch.tensor(data=__data_engine_origin[0, :], dtype=torch.float32)
                 __data_engine_indiv[__data_missing_row:, :] = torch.tensor(data=__data_engine_origin[:, :], dtype=torch.float32)
 
                 self.data_list.append(__data_engine_indiv)
@@ -127,11 +127,11 @@ class TestDataset(Dataset):
         for i in range(1, self.num_total + 1):
             __data_engine_origin = self.data_group.get_group(i).to_numpy()
 
-            if accept_window > __data_engine_origin.shape[0]: # REMIND:padding using the first row
+            if accept_window > __data_engine_origin.shape[0]: # REMIND:padding using 0
                 __data_missing_row = self.accept_window - __data_engine_origin.shape[0]
 
                 __data_engine_indiv = torch.zeros(size=(self.accept_window, __data_engine_origin.shape[1]), dtype=torch.float32)
-                __data_engine_indiv[:__data_missing_row, :] = torch.tensor(data=__data_engine_origin[0, :], dtype=torch.float32)
+                # __data_engine_indiv[:__data_missing_row, :] = torch.tensor(data=__data_engine_origin[0, :], dtype=torch.float32)
                 __data_engine_indiv[__data_missing_row:, :] = torch.tensor(data=__data_engine_origin[:, :], dtype=torch.float32)
 
                 self.data_list.append(__data_engine_indiv)
