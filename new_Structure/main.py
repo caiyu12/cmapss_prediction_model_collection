@@ -126,7 +126,7 @@ class Train():
         )  # actual plot
 
         # err outside -10 to 10 will be printed as prue color
-        max_err_clip =  15
+        max_err_clip =  20
         min_err_clip = -20
         err = pred_rul - true_rul
         cliped_err = err.clip(min_err_clip, max_err_clip)
@@ -148,7 +148,7 @@ class Train():
 
         # add color bar
         cbar = plt.colorbar(sc, ax=ax)
-        cbar.set_label('ERROR (Pred RUL - True RUL)')
+        cbar.set_label('ERROR (Predicted RUL - Actual RUL)')
         cbar.set_ticks([0, 0.5, 1])
         cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
 
@@ -231,9 +231,9 @@ def main() -> None:
     args = args_config(
         dataset_choice=4,
     )
-    model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
+    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
-    # model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
+    model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
 

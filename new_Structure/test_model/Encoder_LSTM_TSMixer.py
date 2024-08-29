@@ -48,7 +48,7 @@ class ResBlock(nn.Module):
 class ENCODER_LSTM_TSMixer(nn.Module):
     def __init__(self, sensors, e_layers, d_model, seq_len, pred_len, dropout, accept_window,):
         super(ENCODER_LSTM_TSMixer, self).__init__()
-        self.name = 'LSTM_TSMixer'
+        self.name = 'ENCODER_LSTM_TSMixer'
         self.layer = e_layers
         self.model = nn.ModuleList(
             [ResBlock(sensors, seq_len, d_model, dropout)
