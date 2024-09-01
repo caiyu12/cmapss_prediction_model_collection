@@ -76,7 +76,8 @@ class Train():
                           'Test RMSE: {:.4f}, '
                           'Test Score: {:.4f}, '
                           'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
-                    self.visualize(outputs_cpu, targets_cpu, test_RMSE)
+                    self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
+                    self.save_best_model_param(test_RMSE)
 
         return float(test_RMSE_best)
 
@@ -94,7 +95,7 @@ class Train():
 
         return score
 
-    def visualize(self, result, y_test, rmse):
+    def visualize(self, result, y_test, rmse, score):
         """
 
         :param result: RUL prediction results
@@ -142,7 +143,7 @@ class Train():
             cmap=color_map,
             edgecolor='k',
             s=100,
-            label='Predicted RUL RMSE = {})'.format(round(rmse, 3)),
+            label='Predicted RUL RMSE = {} Score = {})'.format(round(rmse, 3), int(score)),
             zorder=1,
         )  # predicted plot
 
@@ -175,7 +176,7 @@ class Train():
             case 1:
                 old_file_name = file_list[0]
                 old_file = os.path.join(file_dir, old_file_name)
-                old_criterion_value = float(old_file_name.split('.')[0].split('_')[0])
+                old_criterion_value = float(old_file_name.split('_')[0])
 
                 if new_criterion_value < old_criterion_value:
                     os.remove(old_file)
@@ -191,7 +192,7 @@ def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 10,
+        epoch     = 15,
         device    = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
@@ -201,8 +202,8 @@ def args_config(dataset_choice : int) -> Namespace:
     )
     match dataset_choice:
         case 1:
-            arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, )
+            arguments.accept_window = 60
+            arguments.window_size_tuple = (arguments.accept_window, 70, 80, 90, 100, 110,)
             arguments.batch_size    = 100
 
         case 2:
@@ -212,13 +213,13 @@ def args_config(dataset_choice : int) -> Namespace:
 
         case 3:
             arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
+            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, )
             arguments.batch_size    = 100
 
         case 4:
-            arguments.accept_window = 40
+            arguments.accept_window = 50
             # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
-            arguments.window_size_tuple = (arguments.accept_window, 50, 60, 70)
+            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80)
             arguments.batch_size    = 100
 
         case _:
@@ -233,13 +234,24 @@ def main() -> None:
     )
     # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
-    model = LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
+    # model = LSTM_TSMixer(
+    #     sensors=14,
+    #     e_layers=16, # 8  # 16
+    #     d_model=36, # 36 # 48
+    #     seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window
+    # )
+
+    model = LSTM_pTSMixer_GA(
+        sensors=14, e_layers=16,
+        t_model=48, c_model=36,
+        lstm_layer_num=2,
+        seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
+
     # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
 
     train = Train(args, model)
     rmse = train.Train_Test()
-    train.save_best_model_param(rmse)
 
 if __name__ == '__main__':
     main()

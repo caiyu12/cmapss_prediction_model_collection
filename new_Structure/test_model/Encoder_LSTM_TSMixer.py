@@ -74,16 +74,16 @@ class ENCODER_LSTM_TSMixer(nn.Module):
         '''
         __encoder_layer = nn.TransformerEncoderLayer(
             d_model=14,
-            nhead=1,
-            dim_feedforward=48,
+            nhead=7,
+            dim_feedforward=28,
             dropout=0.1,
             activation='relu',
-            bias=True,
+            bias=False,
             batch_first=True
         )
         self.encoder = nn.TransformerEncoder(
             __encoder_layer,
-            num_layers=8
+            num_layers=1
         )
 
     def forecast(self, x_enc):
