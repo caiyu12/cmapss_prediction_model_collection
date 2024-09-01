@@ -102,6 +102,9 @@ class CMAPSS_Data_Process():
         # Processing train data
         tmp_train_RUL = pd.DataFrame(train_data.groupby('id')['cycle'].max()).reset_index()
         tmp_train_RUL.columns = ['id', 'max']
+        max_rul_row = tmp_train_RUL.loc[tmp_train_RUL['max'].idxmax()]
+        print(max_rul_row)
+
         train_data = train_data.merge(tmp_train_RUL, on=['id'], how='left')
         train_targ = pd.DataFrame(data=train_data['id']).join(pd.DataFrame(data=(train_data['max'] - train_data['cycle']), columns=['target']))
         train_targ['target'] = train_targ['target'].clip(upper=125)

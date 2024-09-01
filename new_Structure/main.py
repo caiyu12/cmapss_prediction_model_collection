@@ -9,77 +9,92 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import os
 
-class Train():
+class Process():
     def __init__(self, arg : Namespace, model) -> None:
         self.arg = arg
         self.data = CMAPSS_Data_Process(self.arg)
 
         self.net = model.to(arg.device)
         self.loss_function = torch.nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=arg.learning_rate)
 
-    def Train_Test(self)->float:
-        test_RMSE_best = numpy.inf
-        for epoch in range(1, self.arg.epoch + 1):
-            for window_size in self.arg.window_size_tuple:
+        self.load_model()
 
-                train_loss = 0
-                test_RMSE  = 0
-                test_score = 0
+    def load_model(self):
+        pth_to_load = os.path.join('.', 'model_backup', self.arg.dataset)
+        if len(os.listdir(pth_to_load)) == 1:
+            file = os.listdir(pth_to_load)[0]
+        else:
+            raise ValueError("No model to load")
 
-                self.net.train()
-                train_dataloader = self.data.getTrainDataloader(
-                    window_size=window_size,
-                    batch_size=self.arg.batch_size,
-                    memory_pinned=self.arg.memory_pinned
-                )
-                for data, target in train_dataloader:
-                    data, target = data.to(self.arg.device), target.to(self.arg.device)
-                    output = self.net(data)
+        file_path = os.path.join(pth_to_load, file)
 
-                    self.optimizer.zero_grad()
-                    loss = self.loss_function(output, target)
-                    train_loss += loss.item()
-                    loss.backward()
-                    self.optimizer.step()
+        self.net.load_state_dict(torch.load(file_path))
+        print(f"Model loaded from {file_path}")
 
-                    del data, target, output
+    def Test(self):
+        test_dataloader = self.data.getTestDataloader(
+            batch_size=1,
+            memory_pinned=self.arg.memory_pinned
+        )
+        i = 0
+        for data, target in test_dataloader:
+            data, target = data.to(self.arg.device), target.to(self.arg.device)
 
+            print('Round: {}, {}{}'.format(i, data.shape, target.shape))
+            i += 1
 
-                with torch.no_grad():
-                    self.net.eval()
-                    test_dataloader = self.data.getTestDataloader(
-                        batch_size=1,
-                        memory_pinned=self.arg.memory_pinned
-                    )
-                    i = 0
-                    outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
-                    for data, target in test_dataloader:
-                        data, target = data.to(self.arg.device), target.to(self.arg.device)
-                        output = self.net(data)
-
-                        outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
-                        i += 1
-
-                        del data, target, output
-
-                test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
-                test_score  = self.score_function(outputs, targets).item()
-                outputs_cpu = outputs.numpy()*self.arg.max_rul
-                targets_cpu = targets.numpy()*self.arg.max_rul
-                test_RMSE   = test_RMSE*self.arg.max_rul
-
-                if test_RMSE < test_RMSE_best:
-                    test_RMSE_best = test_RMSE
-                    print('Epoch: {:03d}, '
-                          'Train Loss: {:.4f}, '
-                          'Test RMSE: {:.4f}, '
-                          'Test Score: {:.4f}, '
-                          'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
-                    self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
-                    self.save_best_model_param(test_RMSE)
-
-        return float(test_RMSE_best)
+    #             train_dataloader = self.data.getTrainDataloader(
+    #                 window_size=window_size,
+    #                 batch_size=self.arg.batch_size,
+    #                 memory_pinned=self.arg.memory_pinned
+    #             )
+    #             for data, target in train_dataloader:
+    #                 data, target = data.to(self.arg.device), target.to(self.arg.device)
+    #                 output = self.net(data)
+    #
+    #                 self.optimizer.zero_grad()
+    #                 loss = self.loss_function(output, target)
+    #                 train_loss += loss.item()
+    #                 loss.backward()
+    #                 self.optimizer.step()
+    #
+    #                 del data, target, output
+    #
+    #
+    #             with torch.no_grad():
+    #                 self.net.eval()
+    #                 test_dataloader = self.data.getTestDataloader(
+    #                     batch_size=1,
+    #                     memory_pinned=self.arg.memory_pinned
+    #                 )
+    #                 i = 0
+    #                 outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
+    #                 for data, target in test_dataloader:
+    #                     data, target = data.to(self.arg.device), target.to(self.arg.device)
+    #                     output = self.net(data)
+    #
+    #                     outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
+    #                     i += 1
+    #
+    #                     del data, target, output
+    #
+    #             test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
+    #             test_score  = self.score_function(outputs, targets).item()
+    #             outputs_cpu = outputs.numpy()*self.arg.max_rul
+    #             targets_cpu = targets.numpy()*self.arg.max_rul
+    #             test_RMSE   = test_RMSE*self.arg.max_rul
+    #
+    #             if test_RMSE < test_RMSE_best:
+    #                 test_RMSE_best = test_RMSE
+    #                 print('Epoch: {:03d}, '
+    #                       'Train Loss: {:.4f}, '
+    #                       'Test RMSE: {:.4f}, '
+    #                       'Test Score: {:.4f}, '
+    #                       'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
+    #                 self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
+    #                 self.save_best_model_param(test_RMSE)
+    #
+    #     return float(test_RMSE_best)
 
 
     def score_function(self, predicted, real):
@@ -160,33 +175,6 @@ class Train():
         ax.set_ylabel("Remaining Useful Life")
         plt.show()
 
-    def save_best_model_param(self, new_criterion_value : float):
-        new_criterion_value = round(new_criterion_value, 3)
-
-        file_dir = os.path.join('./param_model', self.arg.dataset)
-        file_list = os.listdir(file_dir)
-
-        new_file = os.path.join(file_dir, str(new_criterion_value) + '_' + self.arg.model_name + '.pth')
-
-        file_num  = len(file_list)
-        match file_num:
-            case 0:
-                torch.save(self.net.state_dict(), new_file)
-
-            case 1:
-                old_file_name = file_list[0]
-                old_file = os.path.join(file_dir, old_file_name)
-                old_criterion_value = float(old_file_name.split('_')[0])
-
-                if new_criterion_value < old_criterion_value:
-                    os.remove(old_file)
-                    torch.save(self.net.state_dict(), new_file)
-                else:
-                    pass
-
-            case _:
-                IOError('param_model directory structure error, please check it.')
-
 
 def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
@@ -230,16 +218,8 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=2,
     )
-    # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
-    # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
-    # model = LSTM_TSMixer(
-    #     sensors=14,
-    #     e_layers=16, # 8  # 16
-    #     d_model=36, # 36 # 48
-    #     seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window
-    # )
 
     model = LSTM_pTSMixer_GA(
         sensors=14, e_layers=16,
@@ -247,11 +227,11 @@ def main() -> None:
         lstm_layer_num=2,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
-    # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
 
-    train = Train(args, model)
-    rmse = train.Train_Test()
+    instance = Process(args, model)
+    # instance.Test()
+
 
 if __name__ == '__main__':
     main()
