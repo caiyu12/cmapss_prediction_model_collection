@@ -241,11 +241,19 @@ def main() -> None:
     #     seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window
     # )
 
-    model = LSTM_pTSMixer_GA(
+    # model = LSTM_pTSMixer_GA(
+    #     sensors=14, e_layers=16,
+    #     t_model=48, c_model=36,
+    #     lstm_layer_num=2,
+    #     seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window
+    #)
+
+    model = AP_pTSMixer_GA(
         sensors=14, e_layers=16,
         t_model=48, c_model=36,
         lstm_layer_num=2,
-        seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
+        seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window
+    )
 
     # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
     args.model_name = model.name
