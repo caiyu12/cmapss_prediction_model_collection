@@ -20,6 +20,7 @@ class Process():
         self.load_model()
 
     def load_model(self):
+        self.net.eval()
         pth_to_load = os.path.join('.', 'model_backup', self.arg.dataset)
 
         if len(os.listdir(pth_to_load)) == 1:
@@ -323,7 +324,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=3,
     )
 
     model = LSTM_pTSMixer_GA(
