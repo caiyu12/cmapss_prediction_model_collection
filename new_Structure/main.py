@@ -63,6 +63,35 @@ class Process():
 
         self.line_visualize(outputs_np, targets_np, RMSE, score)
 
+    def Test(self):
+        epoch = 1
+
+        test_dataloader = self.data.getTestDataloader(
+            batch_size=1,
+            memory_pinned=self.arg.memory_pinned
+        )
+        i = 0
+        outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
+        for data, target in test_dataloader:
+            data, target = data.to(self.arg.device), target.to(self.arg.device)
+            output = self.net(data)
+
+            outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
+            i += 1
+
+            del data, target, output
+
+        test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
+        test_score  = self.score_function(outputs, targets).item()
+        outputs_cpu = outputs.numpy()*self.arg.max_rul
+        targets_cpu = targets.numpy()*self.arg.max_rul
+        test_RMSE   = test_RMSE*self.arg.max_rul
+
+        print('Epoch: {:03d}, '
+              'Test RMSE: {:.4f}, '
+              'Test Score: {:.4f}, '.format(epoch, test_RMSE, test_score,))
+        self.scatter_visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
+
 
     #             train_dataloader = self.data.getTrainDataloader(
     #                 window_size=window_size,
@@ -294,7 +323,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=,
+        dataset_choice=4,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -306,7 +335,8 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    instance.DrawTrainEngineWithInputWindowSize(window_size=60)
+    instance.Test()
+    # instance.DrawTrainEngineWithInputWindowSize(window_size=60)
 
 
 if __name__ == '__main__':
