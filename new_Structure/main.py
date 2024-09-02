@@ -323,7 +323,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=4,
+        dataset_choice=1,
     )
 
     model = LSTM_pTSMixer_GA(
