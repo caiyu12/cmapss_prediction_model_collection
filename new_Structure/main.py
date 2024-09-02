@@ -336,8 +336,8 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    instance.Test()
-    # instance.DrawTrainEngineWithInputWindowSize(window_size=60)
+    # instance.Test()
+    instance.DrawTrainEngineWithInputWindowSize(window_size=200)
 
 
 if __name__ == '__main__':
