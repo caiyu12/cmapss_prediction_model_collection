@@ -1,3 +1,4 @@
+from data_set import TrainEngineDataset, TestEngineDataset
 from data_set import TrainDataset, TestDataset
 
 from argparse import Namespace
@@ -49,17 +50,72 @@ class CMAPSS_Data_Process():
         (self.train_data, self.train_target,
          self.test_data, self.test_target) = self.dataProcess(train_data_df, test_data_df, test_target_df, max_rul)
 
+    def getTrainEngineDataloader(
+            self,
+            window_size : int,
+            batch_size  : int,
+            engine_num  : int,
+
+            memory_pinned: bool
+    ) -> DataLoader:
+
+        train_dataset = TrainEngineDataset(
+            data_group=self.train_data,
+            targ_group=self.train_target,
+            window_size=window_size,
+            engine_num=engine_num,
+        )
+        train_dataloader = DataLoader(
+            dataset=train_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            drop_last=False,
+            num_workers=0,
+            pin_memory=memory_pinned
+        )
+
+        return train_dataloader
+
+    def getTestEngineDataloader(
+            self,
+            batch_size: int,
+            engine_num: int,
+
+            memory_pinned: bool,
+    ) -> DataLoader:
+        # REMIND: Here batch_size must be 1
+        test_dataset = TestEngineDataset(
+            data_group=self.test_data,
+            targ_group=self.test_target,
+            accept_window=self.arg.accept_window,
+            engine_num=engine_num,
+        )
+        test_dataloader = DataLoader(
+            dataset=test_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            drop_last=False,
+            num_workers=0,
+            pin_memory=memory_pinned
+        )
+
+        return test_dataloader
+
+    '''
+    /*-----------------------------------------------------------------------------*/
+    '''
     def getTrainDataloader(
             self,
             window_size : int,
             batch_size  : int,
+
             memory_pinned: bool
     ) -> DataLoader:
 
         train_dataset = TrainDataset(
-        data_group=self.train_data,
-        targ_group=self.train_target,
-        window_size=window_size
+            data_group=self.train_data,
+            targ_group=self.train_target,
+            window_size=window_size
         )
         train_dataloader = DataLoader(
             dataset=train_dataset,
@@ -102,9 +158,6 @@ class CMAPSS_Data_Process():
         # Processing train data
         tmp_train_RUL = pd.DataFrame(train_data.groupby('id')['cycle'].max()).reset_index()
         tmp_train_RUL.columns = ['id', 'max']
-        max_rul_row = tmp_train_RUL.loc[tmp_train_RUL['max'].idxmax()]
-        print(max_rul_row)
-
         train_data = train_data.merge(tmp_train_RUL, on=['id'], how='left')
         train_targ = pd.DataFrame(data=train_data['id']).join(pd.DataFrame(data=(train_data['max'] - train_data['cycle']), columns=['target']))
         train_targ['target'] = train_targ['target'].clip(upper=125)
@@ -184,4 +237,3 @@ class CMAPSS_Data_Process():
 
         return (bare_train_normalized_df.groupby(by='id'), train_targ.groupby(by='id'),
                 bare_test_normalized_df.groupby(by='id'), test_targ.groupby(by='id'))
-

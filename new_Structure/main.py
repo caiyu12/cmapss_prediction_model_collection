@@ -21,6 +21,7 @@ class Process():
 
     def load_model(self):
         pth_to_load = os.path.join('.', 'model_backup', self.arg.dataset)
+
         if len(os.listdir(pth_to_load)) == 1:
             file = os.listdir(pth_to_load)[0]
         else:
@@ -31,17 +32,37 @@ class Process():
         self.net.load_state_dict(torch.load(file_path))
         print(f"Model loaded from {file_path}")
 
-    def Test(self):
-        test_dataloader = self.data.getTestDataloader(
-            batch_size=1,
+    def DrawTrainEngineWithInputWindowSize(self, window_size):
+        train_dataloader = self.data.getTrainEngineDataloader(
+            window_size=window_size,
+            batch_size=self.arg.batch_size,
+            engine_num=self.arg.train_max_rul_dict['id'],
             memory_pinned=self.arg.memory_pinned
         )
-        i = 0
-        for data, target in test_dataloader:
-            data, target = data.to(self.arg.device), target.to(self.arg.device)
 
-            print('Round: {}, {}{}'.format(i, data.shape, target.shape))
-            i += 1
+        outputs, targets = torch.full((self.arg.train_max_rul_dict['RUL'],), torch.inf), torch.full((self.arg.train_max_rul_dict['RUL'],), torch.inf)
+        i = window_size-1 # REMIND: starting not from zero for ploting
+        for data, target in train_dataloader:
+            data, target = data.to(self.arg.device), target.to(self.arg.device)
+            output = self.net(data)
+
+            for output_item, target_item in zip(output, target):
+                outputs[i] = output_item.cpu().detach()
+                targets[i] = target_item.cpu().detach()
+                i += 1
+
+            del output, target
+
+        RMSE = pow(self.loss_function(outputs, targets).item(), 0.5)*self.arg.max_rul
+        score = self.score_function(outputs, targets).item()
+        outputs_np = outputs.numpy()*self.arg.max_rul
+        targets_np = targets.numpy()*self.arg.max_rul
+
+        # data = self.data.train_data.get_
+
+
+        self.line_visualize(outputs_np, targets_np, RMSE, score)
+
 
     #             train_dataloader = self.data.getTrainDataloader(
     #                 window_size=window_size,
@@ -97,20 +118,59 @@ class Process():
     #     return float(test_RMSE_best)
 
 
-    def score_function(self, predicted, real):
+    def score_function(self, predicts, reals):
         score = 0
-        num = predicted.size(0)
+        num = predicts.size(0)
         for i in range(num):
+            target = torch.tensor(0) if reals[i] == torch.inf else reals[i]
+            predict = torch.tensor(0) if predicts[i] == torch.inf else predicts[i]
 
-            if real[i] > predicted[i]:
-                score = score+ (torch.exp((real[i]*self.arg.max_rul-predicted[i]*self.arg.max_rul)/13)-1)
+            if target > predict:
+                score = score+ (torch.exp((target*self.arg.max_rul-predict*self.arg.max_rul)/13)-1)
 
-            elif real[i]<= predicted[i]:
-                score = score + (torch.exp((predicted[i]*self.arg.max_rul-real[i]*self.arg.max_rul)/10)-1)
+            elif target<= predict:
+                score = score + (torch.exp((predict*self.arg.max_rul-target*self.arg.max_rul)/10)-1)
 
         return score
 
-    def visualize(self, result, y_test, rmse, score):
+    def line_visualize(self, result, y_test, rmse, score):
+        """
+
+        :param result: RUL prediction results
+        :param y_test: true RUL of testing set
+        :param num_test: number of samples
+        :param rmse: RMSE of prediction results
+        """
+        result = numpy.array(result, dtype=object).reshape(-1, 1)
+        num_test = len(result)
+        y_test = pandas.DataFrame(y_test, columns=['RUL'])
+        result = y_test.join(pandas.DataFrame(result))
+        result = result.sort_values('RUL', ascending=False)
+        rmse = float(rmse)
+
+        # the true remaining useful life of the testing samples
+        true_rul = result.iloc[:, 0].to_numpy()
+        # the predicted remaining useful life of the testing samples
+        pred_rul = result.iloc[:, 1].to_numpy()
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.plot(
+            true_rul,
+            color='blue',
+            label='Actual RUL',
+            linewidth=4,
+            zorder=0,
+        )
+        ax.plot(
+            pred_rul,
+            color='red',
+            label='Predicted RUL RMSE = {} Score = {})'.format(round(rmse, 3), int(score)),
+        )
+        ax.legend()
+        plt.show()
+
+    def scatter_visualize(self, result, y_test, rmse, score):
         """
 
         :param result: RUL prediction results
@@ -192,23 +252,39 @@ def args_config(dataset_choice : int) -> Namespace:
         case 1:
             arguments.accept_window = 60
             arguments.window_size_tuple = (arguments.accept_window, 70, 80, 90, 100, 110,)
-            arguments.batch_size    = 100
+            arguments.batch_size    = 1
+            arguments.train_max_rul_dict = {
+                'id' : 69,
+                'RUL': 362,
+            }
 
         case 2:
             arguments.accept_window = 50
             arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
-            arguments.batch_size    = 100
+            arguments.batch_size    = 1
+            arguments.train_max_rul_dict = {
+                'id' : 112,
+                'RUL': 378,
+            }
 
         case 3:
             arguments.accept_window = 50
             arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, )
-            arguments.batch_size    = 100
+            arguments.batch_size    = 1
+            arguments.train_max_rul_dict = {
+                'id' : 55,
+                'RUL': 525,
+            }
 
         case 4:
             arguments.accept_window = 50
             # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80)
-            arguments.batch_size    = 100
+            arguments.batch_size    = 1
+            arguments.train_max_rul_dict = {
+                'id' :118,
+                'RUL':543,
+            }
 
         case _:
             raise ValueError("Invalid dataset choice")
@@ -218,7 +294,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=2,
+        dataset_choice=,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -230,8 +306,9 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    # instance.Test()
+    instance.DrawTrainEngineWithInputWindowSize(window_size=60)
 
 
 if __name__ == '__main__':
-    main()
+    with torch.no_grad():
+        main()
