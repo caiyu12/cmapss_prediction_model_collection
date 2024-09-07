@@ -346,7 +346,7 @@ if __name__ == '__main__':
             args.num_windows = 36
             args.lstmout_dim = 6
             args.hidden_dim = 24
-            args.window_sample = 30
+            args.window_sample = 50
             args.conv_time_CNN = 25
             args.lstmhidden_dim = 8
             args.test_engine_num = 100
