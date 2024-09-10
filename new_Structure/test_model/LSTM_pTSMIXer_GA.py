@@ -59,7 +59,8 @@ class New_AttentionBlockBranch(nn.Module):
         self.BatchNorm = nn.BatchNorm1d(seq_len)
 
     def forward(self, x : torch.tensor) -> torch.tensor:
-        x_layer1 = self.layer1_conv2d_1by1(x.unsqueeze(dim=1))
+        x_res    = self.layer1_conv2d_1by1(x.unsqueeze(dim=1))
+        x_layer1 = x.unsqueeze(dim=1)
         x_layer1_3d = torch.flatten(x_layer1, start_dim=1, end_dim=2)
 
         x_layer2_SensorsAttention = self.layer2_pool_Sensors(x_layer1_3d.permute(0, 2, 1)) #(N, Sensors, 2)
@@ -80,7 +81,7 @@ class New_AttentionBlockBranch(nn.Module):
         x_layer2_3d = torch.matmul(x_layer1_3d, x_layer2_SensorsAttention_result)
         x_layer2_3d = torch.matmul(x_layer2_3d.permute(0, 2, 1), x_layer2_TimeWinAttention_result).permute(0, 2, 1)
 
-        x_layer2_Res_4d = self.layer2_conv2d_1by1_Res(x_layer1)
+        x_layer2_Res_4d = self.layer2_conv2d_1by1_Res(x_res)
         x_layer2_Res_3d = torch.flatten(x_layer2_Res_4d, start_dim=1, end_dim=2)
         x_layer2_3d = self.BatchNorm(x_layer2_3d + x_layer2_Res_3d)
         x_layer2_3d = self.ReLU(x_layer2_3d)
@@ -208,6 +209,7 @@ class LSTM_pTSMixer_GA(nn.Module):
             [ResBlock(sensors, seq_len, t_model, c_model, dropout)
              for _ in range(e_layers)]
         )
+        self.norm = nn.BatchNorm1d(seq_len)
 
         self.attention_layer = New_AttentionBlockBranch(seq_len)
 
@@ -226,16 +228,19 @@ class LSTM_pTSMixer_GA(nn.Module):
         )
 
     def forecast(self, x_enc):
-        x_enc, _ = self.lstm(x_enc)
-        x_enc = x_enc[:, -self.accept_window:, :].contiguous()
+        x, _ = self.lstm(x_enc) + x_enc
+
+        x_sliced = x[:, -self.accept_window:, :].contiguous()
 
         # x: [B, L, D]
         for i in range(self.layer):
-            x_enc = self.model[i](x_enc)
+            x_sliced = self.model[i](x_sliced)
 
-        x_enc = self.attention_layer(x_enc)
+        x_sliced = self.norm(x_sliced)
 
-        enc_out = self.projection(x_enc.transpose(1, 2)).transpose(1, 2)
+        x_sliced = self.attention_layer(x_sliced)
+
+        enc_out = self.projection(x_sliced.transpose(1, 2)).transpose(1, 2)
         enc_out_2d = enc_out.view(-1, 14)
         enc_output = self.squeeze(enc_out_2d)
         return enc_output

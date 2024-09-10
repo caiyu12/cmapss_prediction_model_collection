@@ -329,8 +329,8 @@ def main() -> None:
 
     model = LSTM_pTSMixer_GA(
         sensors=14, e_layers=16,
-        t_model=48, c_model=36,
-        lstm_layer_num=2,
+        t_model=36, c_model=36,
+        lstm_layer_num=4,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
     args.model_name = model.name

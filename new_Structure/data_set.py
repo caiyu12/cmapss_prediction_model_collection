@@ -248,6 +248,7 @@ class TestDataset(Dataset):
             data_group : DataFrameGroupBy,
             targ_group : DataFrameGroupBy,
             accept_window : int,
+            max_window : int,
     ) -> None:
         assert data_group.ngroups == targ_group.ngroups, 'Testing data and target group must have the same number of groups'
 
@@ -255,6 +256,7 @@ class TestDataset(Dataset):
         self.data_group = data_group
         self.targ_group = targ_group
         self.accept_window = accept_window
+        self.max_window = max_window
 
         self.data_list = list()
         self.targ_list = list()
@@ -283,7 +285,7 @@ class TestDataset(Dataset):
         return self.num_total
 
     def __getitem__(self, index):
-        test_tensor = self.data_list[index][:, 1:]
+        test_tensor = self.data_list[index][-self.max_window:, 1:]
 
         target_tensor = self.targ_list[index][0, 1:]
 
