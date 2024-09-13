@@ -192,7 +192,7 @@ def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 15,
+        epoch     = 10  ,
         device    = torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
@@ -217,9 +217,9 @@ def args_config(dataset_choice : int) -> Namespace:
             arguments.batch_size    = 100
 
         case 4:
-            arguments.accept_window = 50
+            arguments.accept_window = 40
             # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80)
+            arguments.window_size_tuple = (arguments.accept_window, 70, 80, )
             arguments.batch_size    = 100
 
         case _:
@@ -242,9 +242,9 @@ def main(choice) -> None:
     # )
 
     model = LSTM_pTSMixer_GA(
-        sensors=14, e_layers=16,
+        sensors=14, e_layers=8,
         t_model=36, c_model=36,
-        lstm_layer_num=4,
+        lstm_layer_num=8,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
     # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
@@ -254,6 +254,6 @@ def main(choice) -> None:
     rmse = train.Train_Test()
 
 if __name__ == '__main__':
-    for choice in range(1, 5):
+    for choice in range(4, 5):
         for i in range(15):
             main(choice)

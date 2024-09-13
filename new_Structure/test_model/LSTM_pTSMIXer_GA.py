@@ -77,6 +77,8 @@ class New_AttentionBlockBranch(nn.Module):
 
         x_layer2_SensorsAttention_result = self.Sigmoid(x_layer2_SensorsAttention)
         x_layer2_TimeWinAttention_result = self.Sigmoid(x_layer2_TimeWinAttention)
+        # x_layer2_SensorsAttention_result = self.ReLU(x_layer2_SensorsAttention)
+        # x_layer2_TimeWinAttention_result = self.ReLU(x_layer2_TimeWinAttention)
 
         x_layer2_3d = torch.matmul(x_layer1_3d, x_layer2_SensorsAttention_result)
         x_layer2_3d = torch.matmul(x_layer2_3d.permute(0, 2, 1), x_layer2_TimeWinAttention_result).permute(0, 2, 1)
@@ -162,7 +164,7 @@ class ResBlock(nn.Module):
             # nn.Dropout(dropout),
             nn.Linear(t_model, seq_len),
             # nn.ReLU(),
-            nn.Dropout(dropout)
+            # nn.Dropout(dropout)
         )
 
         self.channel = nn.Sequential(
@@ -171,11 +173,13 @@ class ResBlock(nn.Module):
             # nn.Dropout(dropout),
             nn.Linear(c_model, sensors),
             # nn.ReLU(),
-            nn.Dropout(dropout)
+            # nn.Dropout(dropout)
         )
 
         self.temporal_conv = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(1, 1), stride=1, padding=0)
         self.channel_conv  = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(1, 1), stride=1, padding=0)
+
+        self.norm = nn.BatchNorm1d(seq_len)
 
     def forward(self, x):
         # x: [B, L, D]
@@ -183,8 +187,10 @@ class ResBlock(nn.Module):
         x_chnl = self.channel(x)
         # x_aton = self.attention_layer(x)
 
+
         x_out = x + self.temporal_conv(x_tprl.unsqueeze(1)).squeeze(1) + self.channel_conv(x_chnl.unsqueeze(1)).squeeze(1)
         # x_out = x + x_tprl+ x_chnl
+        x_out = self.norm(x_out)
         return x_out
 
 
@@ -228,7 +234,7 @@ class LSTM_pTSMixer_GA(nn.Module):
         )
 
     def forecast(self, x_enc):
-        x, _ = self.lstm(x_enc) + x_enc
+        x = self.lstm(x_enc)[0] + x_enc
 
         x_sliced = x[:, -self.accept_window:, :].contiguous()
 
