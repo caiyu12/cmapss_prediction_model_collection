@@ -219,7 +219,7 @@ def args_config(dataset_choice : int) -> Namespace:
         case 4:
             arguments.accept_window = 40
             # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
-            arguments.window_size_tuple = (arguments.accept_window, 70, 80, )
+            arguments.window_size_tuple = (arguments.accept_window, 50, 60, 70, 80, )
             arguments.batch_size    = 100
 
         case _:
@@ -254,6 +254,6 @@ def main(choice) -> None:
     rmse = train.Train_Test()
 
 if __name__ == '__main__':
-    for choice in range(4, 5):
+    for choice in range(1, 5):
         for i in range(15):
             main(choice)

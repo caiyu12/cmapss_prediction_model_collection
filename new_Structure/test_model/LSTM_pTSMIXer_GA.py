@@ -159,10 +159,10 @@ class ResBlock(nn.Module):
         super(ResBlock, self).__init__()
 
         self.temporal = nn.Sequential(
-            nn.Linear(seq_len, t_model),
+            nn.Linear(seq_len, seq_len),
             nn.ReLU(),
-            # nn.Dropout(dropout),
-            nn.Linear(t_model, seq_len),
+            nn.Dropout(dropout),
+            # nn.Linear(t_model, seq_len),
             # nn.ReLU(),
             # nn.Dropout(dropout)
         )
