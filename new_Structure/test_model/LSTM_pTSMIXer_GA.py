@@ -11,7 +11,7 @@ dropout:dropout rate
 '''
 
 class New_AttentionBlockBranch(nn.Module):
-    def __init__(self, seq_len):
+    def __init__(self, sensors, seq_len):
         super().__init__()
         '''
         /*--------layer-1---------------------------------------------------------------------*/
@@ -31,8 +31,9 @@ class New_AttentionBlockBranch(nn.Module):
         )
         # self.layer2_pool_Sensors = nn.MaxPool1d(kernel_size=seq_len, stride=1) # Windows Size
         # self.layer2_pool_TimeWin = nn.AvgPool1d(kernel_size=14, stride=1) # Effective Sensors
-        self.factor_Sensors = 2
-        self.factor_TimeWin = int(seq_len/7)
+        __factor = 7
+        self.factor_Sensors = int(sensors/__factor)
+        self.factor_TimeWin = int(seq_len/__factor)
         self.layer2_pool_Sensors = nn.AdaptiveAvgPool1d(output_size=self.factor_Sensors)
         self.layer2_pool_TimeWin = nn.AdaptiveAvgPool1d(output_size=self.factor_TimeWin)
         __feature_size = 14*self.factor_Sensors + seq_len*self.factor_TimeWin
@@ -217,7 +218,7 @@ class LSTM_pTSMixer_GA(nn.Module):
         )
         self.norm = nn.BatchNorm1d(seq_len)
 
-        self.attention_layer = New_AttentionBlockBranch(seq_len)
+        self.attention_layer = New_AttentionBlockBranch(sensors, seq_len)
 
         self.pred_len = 1
         # self.projection = nn.Linear(seq_len, pred_len)
