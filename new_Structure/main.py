@@ -307,7 +307,7 @@ def args_config(dataset_choice : int) -> Namespace:
             }
 
         case 4:
-            arguments.accept_window = 50
+            arguments.accept_window = 40
             # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80)
             arguments.batch_size    = 1
@@ -324,20 +324,20 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=3,
+        dataset_choice=4,
     )
 
     model = LSTM_pTSMixer_GA(
-        sensors=14, e_layers=16,
+        sensors=14, e_layers=8,
         t_model=36, c_model=36,
-        lstm_layer_num=4,
+        lstm_layer_num=8,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
     args.model_name = model.name
 
     instance = Process(args, model)
-    # instance.Test()
-    instance.DrawTrainEngineWithInputWindowSize(window_size=200)
+    instance.Test()
+    # instance.DrawTrainEngineWithInputWindowSize(window_size=200)
 
 
 if __name__ == '__main__':
