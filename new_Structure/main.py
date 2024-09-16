@@ -33,36 +33,45 @@ class Process():
         self.net.load_state_dict(torch.load(file_path))
         print(f"Model loaded from {file_path}")
 
-    def DrawTrainEngineWithInputWindowSize(self, window_size):
-        train_dataloader = self.data.getTrainEngineDataloader(
-            window_size=window_size,
-            batch_size=self.arg.batch_size,
-            engine_num=self.arg.train_max_rul_dict['id'],
-            memory_pinned=self.arg.memory_pinned
-        )
+    def DrawTrainEngineWithInputWindowSize(self):
+        assert self.arg.window_size >= self.arg.accept_window, 'Window size must be greater than or equal to accept window'
+        data_gp = self.data.train_data
+        targ_gp = self.data.train_target
+        assert data_gp.ngroups == targ_gp.ngroups, "Data and target group number mismatch"
+        assert self.arg.engine_choice <= data_gp.ngroups, "Engine choice higher than valid range"
+        assert self.arg.engine_choice > 0, "Engine choice lower than valid range"
 
-        outputs, targets = torch.full((self.arg.train_max_rul_dict['RUL'],), torch.inf), torch.full((self.arg.train_max_rul_dict['RUL'],), torch.inf)
-        i = window_size-1 # REMIND: starting not from zero for ploting
-        for data, target in train_dataloader:
-            data, target = data.to(self.arg.device), target.to(self.arg.device)
-            output = self.net(data)
+        data = data_gp.get_group(self.arg.engine_choice).iloc[:, 1:].to_numpy()
+        targ = targ_gp.get_group(self.arg.engine_choice).iloc[:, 1:].to_numpy().reshape(-1)
+        assert self.arg.window_size <= data.shape[0], "Window size higher than valid range"
 
-            for output_item, target_item in zip(output, target):
-                outputs[i] = output_item.cpu().detach()
-                targets[i] = target_item.cpu().detach()
-                i += 1
 
-            del output, target
+        iter_length = data.shape[0] - self.arg.window_size + 1
+        full_length = data.shape[0]
+        outputs = torch.zeros(iter_length)
+        targets = torch.tensor(targ[self.arg.window_size-1:])
+
+        for i in range(iter_length):
+            input = torch.Tensor(data[i:i+self.arg.window_size, :]).to(self.arg.device).unsqueeze(0)
+            output = self.net(input)
+            outputs[i] = output.detach().cpu()
+
+            del output
 
         RMSE = pow(self.loss_function(outputs, targets).item(), 0.5)*self.arg.max_rul
         score = self.score_function(outputs, targets).item()
         outputs_np = outputs.numpy()*self.arg.max_rul
         targets_np = targets.numpy()*self.arg.max_rul
+        targfull_np = targ*self.arg.max_rul
 
         # data = self.data.train_data.get_
 
 
-        self.line_visualize(outputs_np, targets_np, RMSE, score)
+        self.line_visualize(
+            outputs_np, targets_np, targfull_np,
+            RMSE, score,
+            self.arg.engine_choice, self.arg.window_size
+        )
 
     def Test(self):
         epoch = 1
@@ -94,66 +103,12 @@ class Process():
         self.scatter_visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
 
 
-    #             train_dataloader = self.data.getTrainDataloader(
-    #                 window_size=window_size,
-    #                 batch_size=self.arg.batch_size,
-    #                 memory_pinned=self.arg.memory_pinned
-    #             )
-    #             for data, target in train_dataloader:
-    #                 data, target = data.to(self.arg.device), target.to(self.arg.device)
-    #                 output = self.net(data)
-    #
-    #                 self.optimizer.zero_grad()
-    #                 loss = self.loss_function(output, target)
-    #                 train_loss += loss.item()
-    #                 loss.backward()
-    #                 self.optimizer.step()
-    #
-    #                 del data, target, output
-    #
-    #
-    #             with torch.no_grad():
-    #                 self.net.eval()
-    #                 test_dataloader = self.data.getTestDataloader(
-    #                     batch_size=1,
-    #                     memory_pinned=self.arg.memory_pinned
-    #                 )
-    #                 i = 0
-    #                 outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
-    #                 for data, target in test_dataloader:
-    #                     data, target = data.to(self.arg.device), target.to(self.arg.device)
-    #                     output = self.net(data)
-    #
-    #                     outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
-    #                     i += 1
-    #
-    #                     del data, target, output
-    #
-    #             test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
-    #             test_score  = self.score_function(outputs, targets).item()
-    #             outputs_cpu = outputs.numpy()*self.arg.max_rul
-    #             targets_cpu = targets.numpy()*self.arg.max_rul
-    #             test_RMSE   = test_RMSE*self.arg.max_rul
-    #
-    #             if test_RMSE < test_RMSE_best:
-    #                 test_RMSE_best = test_RMSE
-    #                 print('Epoch: {:03d}, '
-    #                       'Train Loss: {:.4f}, '
-    #                       'Test RMSE: {:.4f}, '
-    #                       'Test Score: {:.4f}, '
-    #                       'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
-    #                 self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
-    #                 self.save_best_model_param(test_RMSE)
-    #
-    #     return float(test_RMSE_best)
-
-
     def score_function(self, predicts, reals):
         score = 0
         num = predicts.size(0)
         for i in range(num):
-            target = torch.tensor(0) if reals[i] == torch.inf else reals[i]
-            predict = torch.tensor(0) if predicts[i] == torch.inf else predicts[i]
+            target = reals[i]
+            predict = predicts[i]
 
             if target > predict:
                 score = score+ (torch.exp((target*self.arg.max_rul-predict*self.arg.max_rul)/13)-1)
@@ -163,39 +118,28 @@ class Process():
 
         return score
 
-    def line_visualize(self, result, y_test, rmse, score):
-        """
-
-        :param result: RUL prediction results
-        :param y_test: true RUL of testing set
-        :param num_test: number of samples
-        :param rmse: RMSE of prediction results
-        """
-        result = numpy.array(result, dtype=object).reshape(-1, 1)
-        num_test = len(result)
-        y_test = pandas.DataFrame(y_test, columns=['RUL'])
-        result = y_test.join(pandas.DataFrame(result))
-        result = result.sort_values('RUL', ascending=False)
-        rmse = float(rmse)
-
-        # the true remaining useful life of the testing samples
-        true_rul = result.iloc[:, 0].to_numpy()
-        # the predicted remaining useful life of the testing samples
-        pred_rul = result.iloc[:, 1].to_numpy()
+    def line_visualize(self, result, y_test, y_test_full, rmse, score, choice, window):
+        length_full = len(y_test_full)
 
         fig, ax = plt.subplots(figsize=(10, 6))
 
         ax.plot(
-            true_rul,
+            range(length_full),
+            y_test_full,
             color='blue',
             label='Actual RUL',
             linewidth=4,
             zorder=0,
         )
         ax.plot(
-            pred_rul,
+            range(window-1, length_full),
+            result,
             color='red',
             label='Predicted RUL RMSE = {} Score = {})'.format(round(rmse, 3), int(score)),
+        )
+        ax.set_title('Remaining Useful Life Prediction--{} on {}, Engine #{}'.format(
+            self.arg.model_name, self.arg.dataset, choice
+            )
         )
         ax.legend()
         plt.show()
@@ -281,40 +225,39 @@ def args_config(dataset_choice : int) -> Namespace:
     match dataset_choice:
         case 1:
             arguments.accept_window = 60
-            arguments.window_size_tuple = (arguments.accept_window, 70, 80, 90, 100, 110,)
-            arguments.batch_size    = 1
             arguments.train_max_rul_dict = {
                 'id' : 69,
                 'RUL': 362,
             }
+            arguments.engine_choice = 69
+            arguments.window_size = 60
 
         case 2:
             arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
-            arguments.batch_size    = 1
             arguments.train_max_rul_dict = {
                 'id' : 112,
                 'RUL': 378,
             }
+            arguments.engine_choice = 1
+            arguments.window_size = 50
 
         case 3:
             arguments.accept_window = 50
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, )
-            arguments.batch_size    = 1
             arguments.train_max_rul_dict = {
                 'id' : 55,
                 'RUL': 525,
             }
+            arguments.engine_choice = 55 # 9
+            arguments.window_size = 50
 
         case 4:
             arguments.accept_window = 40
-            # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
-            arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80)
-            arguments.batch_size    = 1
             arguments.train_max_rul_dict = {
                 'id' :118,
                 'RUL':543,
             }
+            arguments.engine_choice = 11
+            arguments.window_size = 40
 
         case _:
             raise ValueError("Invalid dataset choice")
@@ -336,8 +279,8 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    instance.Test()
-    # instance.DrawTrainEngineWithInputWindowSize(window_size=200)
+    # instance.Test()
+    instance.DrawTrainEngineWithInputWindowSize()
 
 
 if __name__ == '__main__':
