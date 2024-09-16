@@ -11,7 +11,7 @@ dropout:dropout rate
 '''
 
 class New_AttentionBlockBranch(nn.Module):
-    def __init__(self, seq_len):
+    def __init__(self, sensors, seq_len):
         super().__init__()
         '''
         /*--------layer-1---------------------------------------------------------------------*/
@@ -31,8 +31,9 @@ class New_AttentionBlockBranch(nn.Module):
         )
         # self.layer2_pool_Sensors = nn.MaxPool1d(kernel_size=seq_len, stride=1) # Windows Size
         # self.layer2_pool_TimeWin = nn.AvgPool1d(kernel_size=14, stride=1) # Effective Sensors
-        self.factor_Sensors = 2
-        self.factor_TimeWin = int(seq_len/7)
+        __factor = 7
+        self.factor_Sensors = int(sensors/__factor)
+        self.factor_TimeWin = int(seq_len/__factor)
         self.layer2_pool_Sensors = nn.AdaptiveAvgPool1d(output_size=self.factor_Sensors)
         self.layer2_pool_TimeWin = nn.AdaptiveAvgPool1d(output_size=self.factor_TimeWin)
         __feature_size = 14*self.factor_Sensors + seq_len*self.factor_TimeWin
@@ -157,12 +158,12 @@ class ResBlock(nn.Module):
         super(ResBlock, self).__init__()
 
         self.temporal = nn.Sequential(
-            nn.Linear(seq_len, t_model),
+            nn.Linear(seq_len, seq_len),
             nn.ReLU(),
-            # nn.Dropout(dropout),
-            nn.Linear(t_model, seq_len),
+            nn.Dropout(dropout),
+            # nn.Linear(t_model, seq_len),
             # nn.ReLU(),
-            nn.Dropout(dropout)
+            # nn.Dropout(dropout)
         )
 
         self.channel = nn.Sequential(
@@ -171,11 +172,13 @@ class ResBlock(nn.Module):
             # nn.Dropout(dropout),
             nn.Linear(c_model, sensors),
             # nn.ReLU(),
-            nn.Dropout(dropout)
+            # nn.Dropout(dropout)
         )
 
         self.temporal_conv = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(1, 1), stride=1, padding=0)
         self.channel_conv  = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(1, 1), stride=1, padding=0)
+
+        self.norm = nn.BatchNorm1d(seq_len)
 
     def forward(self, x):
         # x: [B, L, D]
@@ -183,8 +186,10 @@ class ResBlock(nn.Module):
         x_chnl = self.channel(x)
         # x_aton = self.attention_layer(x)
 
+
         x_out = x + self.temporal_conv(x_tprl.unsqueeze(1)).squeeze(1) + self.channel_conv(x_chnl.unsqueeze(1)).squeeze(1)
         # x_out = x + x_tprl+ x_chnl
+        x_out = self.norm(x_out)
         return x_out
 
 
@@ -211,7 +216,7 @@ class LSTM_pTSMixer_GA(nn.Module):
         )
         self.norm = nn.BatchNorm1d(seq_len)
 
-        self.attention_layer = New_AttentionBlockBranch(seq_len)
+        self.attention_layer = New_AttentionBlockBranch(sensors, seq_len)
 
         self.pred_len = 1
         # self.projection = nn.Linear(seq_len, pred_len)
@@ -228,7 +233,7 @@ class LSTM_pTSMixer_GA(nn.Module):
         )
 
     def forecast(self, x_enc):
-        x, _ = self.lstm(x_enc) + x_enc
+        x = self.lstm(x_enc)[0] + x_enc
 
         x_sliced = x[:, -self.accept_window:, :].contiguous()
 
