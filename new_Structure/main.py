@@ -137,8 +137,8 @@ class Process():
             color='red',
             label='Predicted RUL RMSE = {} Score = {})'.format(round(rmse, 3), int(score)),
         )
-        ax.set_title('Remaining Useful Life Prediction--{} on {}, Engine #{}'.format(
-            self.arg.model_name, self.arg.dataset, choice
+        ax.set_title('Remaining Useful Life Prediction--{} on {}, Engine #{}, Window Size={}'.format(
+            self.arg.model_name, self.arg.dataset, choice, window
             )
         )
         ax.legend()
@@ -225,13 +225,13 @@ def args_config(dataset_choice : int) -> Namespace:
     match dataset_choice:
         case 1:
             arguments.accept_window = 60
-            arugments.test_window   = 110
+            arguments.test_window   = 110
             arguments.train_max_rul_dict = {
                 'id' : 69,
                 'RUL': 362,
             }
-            arguments.engine_choice = 69
-            arguments.window_size = 60
+            arguments.engine_choice = 71 # 7 (60, 65, 70), 71 (60, 70)
+            arguments.window_size = 70
 
         case 2:
             arguments.accept_window = 50
@@ -240,8 +240,8 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' : 112,
                 'RUL': 378,
             }
-            arguments.engine_choice = 1
-            arguments.window_size = 50
+            arguments.engine_choice = 177
+            arguments.window_size = 70
 
         case 3:
             arguments.accept_window = 50
@@ -250,7 +250,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' : 55,
                 'RUL': 525,
             }
-            arguments.engine_choice = 55 # 9
+            arguments.engine_choice = 77 # 9, 77 (50, 60)
             arguments.window_size = 50
 
         case 4:
@@ -260,8 +260,8 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' :118,
                 'RUL':543,
             }
-            arguments.engine_choice = 11
-            arguments.window_size = 40
+            arguments.engine_choice = 118 # 118
+            arguments.window_size = 80
 
         case _:
             raise ValueError("Invalid dataset choice")
@@ -271,7 +271,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=4,
+        dataset_choice=1,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -283,8 +283,8 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    instance.Test()
-    # instance.DrawTrainEngineWithInputWindowSize()
+    # instance.Test()
+    instance.DrawTrainEngineWithInputWindowSize()
 
 
 if __name__ == '__main__':
