@@ -134,7 +134,7 @@ class CMAPSS_Data_Process():
             data_group=self.test_data,
             targ_group=self.test_target,
             accept_window=self.arg.accept_window,
-            max_window=self.arg.window_size_tuple[-1]
+            max_window=self.arg.test_window
         )
         test_dataloader = DataLoader(
             dataset=test_dataset,

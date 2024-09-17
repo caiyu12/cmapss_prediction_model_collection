@@ -225,6 +225,7 @@ def args_config(dataset_choice : int) -> Namespace:
     match dataset_choice:
         case 1:
             arguments.accept_window = 60
+            arugments.test_window   = 110
             arguments.train_max_rul_dict = {
                 'id' : 69,
                 'RUL': 362,
@@ -234,6 +235,7 @@ def args_config(dataset_choice : int) -> Namespace:
 
         case 2:
             arguments.accept_window = 50
+            arguments.test_window   = 120
             arguments.train_max_rul_dict = {
                 'id' : 112,
                 'RUL': 378,
@@ -243,6 +245,7 @@ def args_config(dataset_choice : int) -> Namespace:
 
         case 3:
             arguments.accept_window = 50
+            arguments.test_window   = 100
             arguments.train_max_rul_dict = {
                 'id' : 55,
                 'RUL': 525,
@@ -252,6 +255,7 @@ def args_config(dataset_choice : int) -> Namespace:
 
         case 4:
             arguments.accept_window = 40
+            arguments.test_window   = 80
             arguments.train_max_rul_dict = {
                 'id' :118,
                 'RUL':543,
@@ -279,8 +283,8 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    # instance.Test()
-    instance.DrawTrainEngineWithInputWindowSize()
+    instance.Test()
+    # instance.DrawTrainEngineWithInputWindowSize()
 
 
 if __name__ == '__main__':
