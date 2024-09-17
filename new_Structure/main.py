@@ -230,7 +230,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' : 69,
                 'RUL': 362,
             }
-            arguments.engine_choice = 71 # 7 (60, 65, 70), 71 (60, 70)
+            arguments.engine_choice = 7 # 7 (60, 65, 70), 71 (60, 70)
             arguments.window_size = 70
 
         case 2:
@@ -271,7 +271,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=3,
     )
 
     model = LSTM_pTSMixer_GA(
