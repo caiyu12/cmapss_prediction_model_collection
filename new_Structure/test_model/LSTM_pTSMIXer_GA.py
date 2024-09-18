@@ -76,10 +76,10 @@ class New_AttentionBlockBranch(nn.Module):
         x_layer2_SensorsAttention = self.layer2_linear_Sensors(x_layer2_linear[:, :14*self.factor_Sensors]).unsqueeze(dim=2)
         x_layer2_TimeWinAttention = self.layer2_linear_TimeWin(x_layer2_linear[:, 14*self.factor_Sensors:]).unsqueeze(dim=2)
 
-        x_layer2_SensorsAttention_result = self.Sigmoid(x_layer2_SensorsAttention)
-        x_layer2_TimeWinAttention_result = self.Sigmoid(x_layer2_TimeWinAttention)
-        # x_layer2_SensorsAttention_result = self.ReLU(x_layer2_SensorsAttention)
-        # x_layer2_TimeWinAttention_result = self.ReLU(x_layer2_TimeWinAttention)
+        # x_layer2_SensorsAttention_result = self.Sigmoid(x_layer2_SensorsAttention)
+        # x_layer2_TimeWinAttention_result = self.Sigmoid(x_layer2_TimeWinAttention)
+        x_layer2_SensorsAttention_result = self.ReLU(x_layer2_SensorsAttention)
+        x_layer2_TimeWinAttention_result = self.ReLU(x_layer2_TimeWinAttention)
 
         x_layer2_3d = torch.matmul(x_layer1_3d, x_layer2_SensorsAttention_result)
         x_layer2_3d = torch.matmul(x_layer2_3d.permute(0, 2, 1), x_layer2_TimeWinAttention_result).permute(0, 2, 1)

@@ -76,8 +76,8 @@ class Train():
                           'Test RMSE: {:.4f}, '
                           'Test Score: {:.4f}, '
                           'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
-                    self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
-                    self.save_best_model_param(test_RMSE)
+                    # self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
+                    self.save_best_model_param(test_RMSE) if test_RMSE < self.arg.criterion else None
 
         return float(test_RMSE_best)
 
@@ -169,30 +169,31 @@ class Train():
         new_file = os.path.join(file_dir, str(new_criterion_value) + '_' + self.arg.model_name + '.pth')
 
         file_num  = len(file_list)
-        match file_num:
-            case 0:
-                torch.save(self.net.state_dict(), new_file)
-
-            case 1:
-                old_file_name = file_list[0]
-                old_file = os.path.join(file_dir, old_file_name)
-                old_criterion_value = float(old_file_name.split('_')[0])
-
-                if new_criterion_value < old_criterion_value:
-                    os.remove(old_file)
-                    torch.save(self.net.state_dict(), new_file)
-                else:
-                    pass
-
-            case _:
-                IOError('param_model directory structure error, please check it.')
+        # match file_num:
+        #     case 0:
+        #         torch.save(self.net.state_dict(), new_file)
+        #
+        #     case 1:
+        #         old_file_name = file_list[0]
+        #         old_file = os.path.join(file_dir, old_file_name)
+        #         old_criterion_value = float(old_file_name.split('_')[0])
+        #
+        #         if new_criterion_value < old_criterion_value:
+        #             os.remove(old_file)
+        #             torch.save(self.net.state_dict(), new_file)
+        #         else:
+        #             pass
+        #
+        #     case _:
+        #         IOError('param_model directory structure error, please check it.')
+        torch.save(self.net.state_dict(), new_file)
 
 
 def args_config(dataset_choice : int) -> Namespace:
     arguments = Namespace(
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 10  ,
+        epoch     = 15  ,
         device    = torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
@@ -206,21 +207,29 @@ def args_config(dataset_choice : int) -> Namespace:
             arguments.window_size_tuple = (arguments.accept_window, 70, 80, 90, 100, 110,)
             arguments.batch_size    = 100
 
+            arguments.criterion = 12
+
         case 2:
             arguments.accept_window = 50
             arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.batch_size    = 100
+
+            arguments.criterion = 12
 
         case 3:
             arguments.accept_window = 50
             arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, )
             arguments.batch_size    = 100
 
+            arguments.criterion = 12
+
         case 4:
             arguments.accept_window = 40
             # arguments.window_size_tuple = (arguments.accept_window, 60, 70, 80, 90, 100, 110, 120,)
             arguments.window_size_tuple = (arguments.accept_window, 50, 60, 70, 80, )
             arguments.batch_size    = 100
+
+            arguments.criterion = 13
 
         case _:
             raise ValueError("Invalid dataset choice")
@@ -243,7 +252,7 @@ def main(choice) -> None:
 
     model = LSTM_pTSMixer_GA(
         sensors=14, e_layers=8,
-        t_model=36, c_model=36,
+        t_model=48, c_model=36,
         lstm_layer_num=8,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
