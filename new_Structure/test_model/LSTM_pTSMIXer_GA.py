@@ -204,21 +204,25 @@ class ResBlock(nn.Module):
 #         )
 
 class LSTM_pTSMixer_GA(nn.Module):
-    def __init__(self, sensors, e_layers, t_model, c_model, lstm_layer_num, seq_len, dropout, accept_window):
+    def __init__(self, sensors, e_layers, t_model, c_model, lstm_layer_num, sga_layer_num, seq_len, dropout, accept_window):
         super(LSTM_pTSMixer_GA, self).__init__()
-        self.name = 'LSTM_pTSMixer_GA'
-        self.layer = e_layers
+        self.name = 'LSTM_pTSMixer_SGA'
+        self.ptsmixer_layer = e_layers
+        self.sga_layer      = sga_layer_num
         self.accept_window = accept_window
 
         self.lstm = nn.LSTM(input_size=sensors, hidden_size=sensors, num_layers=lstm_layer_num, batch_first=True)
 
-        self.model = nn.ModuleList(
+        self.ptsmixer_series = nn.ModuleList(
             [ResBlock(sensors, seq_len, t_model, c_model, dropout)
              for _ in range(e_layers)]
         )
         self.norm = nn.BatchNorm1d(seq_len)
 
-        self.attention_layer = New_AttentionBlockBranch(sensors, seq_len)
+        self.sga_series = nn.ModuleList(
+            [New_AttentionBlockBranch(sensors, seq_len)]
+            for _ in range(sga_layer_num)
+        )
 
         self.pred_len = 1
         # self.projection = nn.Linear(seq_len, pred_len)
@@ -240,12 +244,13 @@ class LSTM_pTSMixer_GA(nn.Module):
         x_sliced = x[:, -self.accept_window:, :].contiguous()
 
         # x: [B, L, D]
-        for i in range(self.layer):
-            x_sliced = self.model[i](x_sliced)
+        for i in range(self.ptsmixer_layer):
+            x_sliced = self.ptsmixer_series[i](x_sliced)
 
         x_sliced = self.norm(x_sliced)
 
-        x_sliced = self.attention_layer(x_sliced)
+        for i in range(self.sga_layer):
+            x_sliced = self.attention_layer(x_sliced)
 
         enc_out = self.projection(x_sliced.transpose(1, 2)).transpose(1, 2)
         enc_out_2d = enc_out.view(-1, 14)
