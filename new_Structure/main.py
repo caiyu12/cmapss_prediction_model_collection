@@ -276,7 +276,7 @@ def main() -> None:
 
     model = LSTM_pTSMixer_GA(
         sensors=14, e_layers=8,
-        t_model=48, c_model=36,
+        t_model=36, c_model=36, # 48*36 for ReLU
         lstm_layer_num=8,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
