@@ -250,7 +250,7 @@ class LSTM_pTSMixer_GA(nn.Module):
         x_sliced = self.norm(x_sliced)
 
         for i in range(self.sga_layer):
-            x_sliced = self.attention_layer(x_sliced)
+            x_sliced = self.sga_series[i](x_sliced)
 
         enc_out = self.projection(x_sliced.transpose(1, 2)).transpose(1, 2)
         enc_out_2d = enc_out.view(-1, 14)
