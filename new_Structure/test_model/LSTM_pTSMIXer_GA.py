@@ -220,8 +220,8 @@ class LSTM_pTSMixer_GA(nn.Module):
         self.norm = nn.BatchNorm1d(seq_len)
 
         self.sga_series = nn.ModuleList(
-            [New_AttentionBlockBranch(sensors, seq_len)]
-            for _ in range(sga_layer_num)
+            [New_AttentionBlockBranch(sensors, seq_len)
+            for _ in range(sga_layer_num)]
         )
 
         self.pred_len = 1
