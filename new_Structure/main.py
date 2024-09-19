@@ -1,3 +1,5 @@
+import numpy as np
+
 from test_model import *
 from data_process import CMAPSS_Data_Process
 
@@ -7,6 +9,7 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from scipy.stats import norm, gaussian_kde, binomtest
 import os
 
 class Process():
@@ -33,26 +36,29 @@ class Process():
         self.net.load_state_dict(torch.load(file_path))
         print(f"Model loaded from {file_path}")
 
-    def DrawTrainEngineWithInputWindowSize(self):
-        assert self.arg.window_size >= self.arg.accept_window, 'Window size must be greater than or equal to accept window'
+    def TrainEngineWithNOandInputWindowSize(
+            self,
+            numero: int,
+            window: int
+    ) -> (numpy.ndarray, numpy.ndarray, numpy.ndarray):
+        assert window >= self.arg.accept_window, 'Window size must be greater or equal to accept window'
         data_gp = self.data.train_data
         targ_gp = self.data.train_target
         assert data_gp.ngroups == targ_gp.ngroups, "Data and target group number mismatch"
-        assert self.arg.engine_choice <= data_gp.ngroups, "Engine choice higher than valid range"
-        assert self.arg.engine_choice > 0, "Engine choice lower than valid range"
+        assert numero <= data_gp.ngroups, "Engine choice higher than valid range"
+        assert numero > 0, "Engine choice lower than valid range"
+        assert window <= data_gp.get_group(numero).shape[0], "Window size higher than valid range"
 
-        data = data_gp.get_group(self.arg.engine_choice).iloc[:, 1:].to_numpy()
-        targ = targ_gp.get_group(self.arg.engine_choice).iloc[:, 1:].to_numpy().reshape(-1)
-        assert self.arg.window_size <= data.shape[0], "Window size higher than valid range"
+        data = data_gp.get_group(numero).iloc[:, 1:].to_numpy()
+        targ = targ_gp.get_group(numero).iloc[:, 1:].to_numpy().reshape(-1)
 
-
-        iter_length = data.shape[0] - self.arg.window_size + 1
+        iter_length = data.shape[0] - window + 1
         full_length = data.shape[0]
         outputs = torch.zeros(iter_length)
-        targets = torch.tensor(targ[self.arg.window_size-1:])
+        targets = torch.tensor(targ[window-1:])
 
         for i in range(iter_length):
-            input = torch.Tensor(data[i:i+self.arg.window_size, :]).to(self.arg.device).unsqueeze(0)
+            input = torch.Tensor(data[i:i+window, :]).to(self.arg.device).unsqueeze(0)
             output = self.net(input)
             outputs[i] = output.detach().cpu()
 
@@ -64,14 +70,54 @@ class Process():
         targets_np = targets.numpy()*self.arg.max_rul
         targfull_np = targ*self.arg.max_rul
 
-        # data = self.data.train_data.get_
+        return outputs_np, targets_np, targfull_np
+
+
+    def DrawTrainEnginePredOnArgWin(self):
+        outputs, targets, targfull = self.TrainEngineWithNOandInputWindowSize(
+            self.arg.engine_choice, self.arg.window_size
+        )
+        RMSE = pow(self.loss_function(torch.tensor(outputs), torch.tensor(targets)).item(), 0.5)
+        score = self.score_function(torch.tensor(outputs), torch.tensor(targets)).item()
 
 
         self.line_visualize(
-            outputs_np, targets_np, targfull_np,
+            outputs, targets, targfull,
             RMSE, score,
             self.arg.engine_choice, self.arg.window_size
         )
+
+    def RMSE60OfTrainEngineOnArgDataset(self):
+        engine_num = self.data.train_engine_num
+        metric_length = 60
+
+        RMSE_origins_np     = np.zeros(engine_num)
+        RMSE_differences_np = np.zeros(engine_num)
+        for i in range(1, engine_num+1):
+            outputs_origin, targets_origin, targfull_origin = self.TrainEngineWithNOandInputWindowSize(
+                i, self.arg.accept_window
+            )
+            outputs_LargWin, targets_LargWin, targfull_LargWin = self.TrainEngineWithNOandInputWindowSize(
+                i, self.arg.accept_window + 5
+            )
+
+            RMSE_origin = pow(self.loss_function(
+                torch.tensor(outputs_origin[-metric_length:]), torch.tensor(targets_origin[-metric_length:])
+            ).item(), 0.5)
+            RMSE_LargWin = pow(self.loss_function(
+                torch.tensor(outputs_LargWin[-metric_length:]), torch.tensor(targets_LargWin[-metric_length:])
+            ).item(), 0.5)
+
+            RMSE_difference = RMSE_origin - RMSE_LargWin
+
+            RMSE_origins_np[i-1] = RMSE_origin
+            RMSE_differences_np[i-1] = RMSE_difference
+            print('NO:{} RMSE_difference:{}'.format(i, RMSE_difference))
+
+        numpy.save('./RMSEarray/{}_RMSE_origin.npy'.format(self.arg.dataset), RMSE_origins_np)
+        numpy.save('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset), RMSE_differences_np)
+
+
 
     def Test(self):
         epoch = 1
@@ -118,7 +164,104 @@ class Process():
 
         return score
 
-    def line_visualize(self, result, y_test, y_test_full, rmse, score, choice, window):
+
+    def sign_test(self):
+        data = np.load('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset))
+        count = sum([1 for i in data if i > 0]) # REMIND: Here we count the number of positive values, which means improvement in RMSE
+
+        # REMIND: Here we use binomtest to test the Null Hypothesis that the probability of improvement is 0.5,
+        #  and the alternative hypothesis is that the probability of improvement is greater than 0.5
+        result = binomtest(count, len(data), p=0.5, alternative='greater')
+        print(result)
+
+
+    def bell_visualize(self):
+        data = np.load('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset))
+
+        mean = np.mean(data)
+        std_dev = np.std(data)
+
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        ax2 = ax1.twinx()
+
+        xmin, xmax = mean - 3*std_dev, mean + 3*std_dev
+        x = np.linspace(xmin, xmax, 1000)
+        p = norm.pdf(x, mean, std_dev)
+
+        # 绘制整数柱状图
+        hist, bin_edges = np.histogram(data, bins=range(int(xmin), int(xmax)+2))
+        ax1.bar(
+            bin_edges[:-1],
+            hist,
+            width=np.diff(bin_edges),
+            color='skyblue', edgecolor='black',
+            alpha=1,
+            label='Bars',
+            zorder=1
+        )
+        ax1.set_ylabel('Frequency', color='gray')
+        ax1.tick_params(axis='y', labelcolor='gray')
+        # 绘制正态分布的 bell curve
+        ax2.plot(
+            x,
+            p,
+            'r',
+            linewidth=2,
+            label='Bell Curve',
+            zorder=2
+        )
+        ax2.set_xlabel('improvement')
+        ax2.set_ylabel('Probability Density', color='k')
+        ax2.tick_params(axis='y', labelcolor='k')
+
+        # 绘制KDE
+        kde = gaussian_kde(data)
+        kde_values = kde(x)
+        ax2.plot(
+            x,
+            kde_values,
+            'g',
+            linewidth=2,
+            label='KDE',
+        )
+
+        # 添加标题
+        plt.title('Bell&Bars: RMSE improvement with +5 Time-Window on {} train dataset'.format(self.arg.dataset))
+        # 添加图例
+        ax1.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+        # 显示图表
+        plt.show()
+
+    def bar_visualize(self, size, RMSE_real, RMSE_diff):
+        width = 0.35
+
+        x_labels = numpy.arange(1, size+1)
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        bars_real = ax.bar(x_labels - width/2, RMSE_real, color='b', label='RMSE origin')
+        bars_diff = ax.bar(x_labels + width/2, RMSE_diff, color='r', label='RMSE difference')
+        for i, bar in enumerate(bars_real):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f'{x_labels[i]}',
+            ha='center', va='bottom' if bar.get_height() >= 0 else 'top', fontsize=8)
+
+        for i, bar in enumerate(bars_diff):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f'{x_labels[i]}',
+            ha='center', va='bottom' if bar.get_height() >= 0 else 'top', fontsize=8)
+
+            ax.set_xlabel('Index')
+            ax.set_ylabel('RMSE')
+            ax.set_title('Bar chart of RMSE60 on {}'.format(self.arg.dataset))
+            ax.legend()
+            # 显示图表
+            # plt.tight_layout()
+            plt.show()
+
+    def line_visualize(
+            self,
+            result : numpy.ndarray, y_test : numpy.ndarray, y_test_full : numpy.ndarray,
+            rmse, score, choice, window):
         length_full = len(y_test_full)
 
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -215,7 +358,7 @@ def args_config(dataset_choice : int) -> Namespace:
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
         epoch     = 10,
-        device    = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        device    = torch.device("cuda:2" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
 
@@ -231,7 +374,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'RUL': 362,
             }
             arguments.engine_choice = 7 # 7 (60, 65, 70), 71 (60, 70)
-            arguments.window_size = 70
+            arguments.window_size = 60
 
         case 2:
             arguments.accept_window = 50
@@ -241,7 +384,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'RUL': 378,
             }
             arguments.engine_choice = 177
-            arguments.window_size = 70
+            arguments.window_size = 50
 
         case 3:
             arguments.accept_window = 50
@@ -251,7 +394,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'RUL': 525,
             }
             arguments.engine_choice = 77 # 9, 77 (50, 60)
-            arguments.window_size = 50
+            arguments.window_size = 60
 
         case 4:
             arguments.accept_window = 40
@@ -261,7 +404,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'RUL':543,
             }
             arguments.engine_choice = 118 # 118
-            arguments.window_size = 80
+            arguments.window_size = 40
 
         case _:
             raise ValueError("Invalid dataset choice")
@@ -271,7 +414,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=3,
+        dataset_choice=1,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -284,8 +427,10 @@ def main() -> None:
 
     instance = Process(args, model)
     # instance.Test()
-    instance.DrawTrainEngineWithInputWindowSize()
-
+    # instance.DrawTrainEnginePredOnArgWin()
+    # instance.RMSE60OfTrainEngineOnArgDataset()
+    # instance.bell_visualize()
+    instance.sign_test()
 
 if __name__ == '__main__':
     with torch.no_grad():
