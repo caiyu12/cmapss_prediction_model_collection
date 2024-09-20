@@ -138,7 +138,7 @@ class Process():
             del data, target, output
 
         test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
-        test_score  = self.score_function(outputs, targets).item()
+        test_score  = self.score_function(outputs*self.arg.max_rul, targets*self.arg.max_rul).item()
         outputs_cpu = outputs.numpy()*self.arg.max_rul
         targets_cpu = targets.numpy()*self.arg.max_rul
         test_RMSE   = test_RMSE*self.arg.max_rul
@@ -157,10 +157,10 @@ class Process():
             predict = predicts[i]
 
             if target > predict:
-                score = score+ (torch.exp((target*self.arg.max_rul-predict*self.arg.max_rul)/13)-1)
+                score = score+ (torch.exp((target-predict)/13)-1)
 
             elif target<= predict:
-                score = score + (torch.exp((predict*self.arg.max_rul-target*self.arg.max_rul)/10)-1)
+                score = score + (torch.exp((predict-target)/10)-1)
 
         return score
 
@@ -200,8 +200,9 @@ class Process():
             label='Bars',
             zorder=1
         )
-        ax1.set_ylabel('Frequency', color='gray')
-        ax1.tick_params(axis='y', labelcolor='gray')
+        ax1.set_xlabel('Improvement')
+        ax1.set_ylabel('Frequency', color='k')
+        ax1.tick_params(axis='y', labelcolor='k')
         # 绘制正态分布的 bell curve
         ax2.plot(
             x,
@@ -211,9 +212,6 @@ class Process():
             label='Bell Curve',
             zorder=2
         )
-        ax2.set_xlabel('improvement')
-        ax2.set_ylabel('Probability Density', color='k')
-        ax2.tick_params(axis='y', labelcolor='k')
 
         # 绘制KDE
         kde = gaussian_kde(data)
@@ -225,9 +223,11 @@ class Process():
             linewidth=2,
             label='KDE',
         )
+        ax2.set_ylabel('Probability Density', color='k')
+        ax2.tick_params(axis='y', labelcolor='k')
 
         # 添加标题
-        plt.title('Bell&Bars: RMSE improvement with +5 Time-Window on {} train dataset'.format(self.arg.dataset))
+        plt.title('RMSE reduction on {}'.format(self.arg.dataset))
         # 添加图例
         ax1.legend(loc='upper left')
         ax2.legend(loc='upper right')
@@ -345,12 +345,71 @@ class Process():
         cbar.set_ticks([0, 0.5, 1])
         cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
 
-        ax.set_title('Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset))
+        ax.set_title(
+            'Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset),
+            fontsize=15
+        )
         ax.legend()
 
         ax.set_xlabel("Samples")
         ax.set_ylabel("Remaining Useful Life")
         plt.show()
+
+    #TODO: Implement this function
+    def DrawTrainEnginePredOnAutoArgWinForComparison(self):
+        outputs, targets, RMSEs, RMSE60s = list(), list(), list(), list()
+
+        for i in range(5):
+            output, target, targfull = self.TrainEngineWithNOandInputWindowSize(
+                self.arg.engine_choice, self.arg.window_size + 5*i
+            )
+            RMSE = pow(self.loss_function(torch.tensor(output), torch.tensor(target)).item(), 0.5)
+            RMSE60 = pow(self.loss_function(torch.tensor(output[-60:]), torch.tensor(target[-60:])).item(), 0.5)
+            outputs.append(output)
+            targets.append(target)
+            RMSEs.append(RMSE)
+            RMSE60s.append(RMSE60)
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        line_widths = [2, 3, 5, 8, 14]
+        dot_sizes_start = 20
+        length_plot = len(targfull)
+        colors = [(229/255, 43/255, 80/255),
+                  (13/255, 148/255, 148/255),
+                  (253/255, 238/255, 0/255),
+                  (111/255, 0/255, 255/255),
+                  (0/255, 240/255, 230/255)]
+        darken_factor = 0.7
+
+        ax.plot(
+            range(length_plot),
+            targfull,
+            color='blue',
+            label='Actual RUL',
+            linewidth=4,
+            zorder=0,
+        )
+
+        for i in range(5):
+            window_size = self.arg.window_size + 5*i
+            ax.plot(
+                range(window_size-1, length_plot),
+                outputs[i],
+                color=colors[i],
+                label='Predicted RUL RMSE={}, RMSE-60={}, time-window={}'.format(
+                    round(RMSEs[i], 3), round(RMSE60s[i], 3), window_size),
+                linewidth=line_widths[i],
+                zorder=5-i
+            )
+
+        ax.set_title('Different time-window prediction on {}, Engine #{}'.format(
+            self.arg.dataset, self.arg.engine_choice)
+        )
+        ax.legend(loc='lower left')
+        ax.set_xlabel('cycle')
+        ax.set_ylabel('RUL')
+        fig.show()
+
 
 
 def args_config(dataset_choice : int) -> Namespace:
@@ -358,7 +417,7 @@ def args_config(dataset_choice : int) -> Namespace:
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
         epoch     = 10,
-        device    = torch.device("cuda:2" if torch.cuda.is_available() else "cpu"),
+        device    = torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
 
@@ -394,7 +453,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'RUL': 525,
             }
             arguments.engine_choice = 77 # 9, 77 (50, 60)
-            arguments.window_size = 60
+            arguments.window_size = 50
 
         case 4:
             arguments.accept_window = 40
@@ -414,7 +473,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=4,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -426,11 +485,12 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    # instance.Test()
+    instance.Test()
     # instance.DrawTrainEnginePredOnArgWin()
     # instance.RMSE60OfTrainEngineOnArgDataset()
     # instance.bell_visualize()
-    instance.sign_test()
+    # instance.sign_test()
+    # instance.DrawTrainEnginePredOnAutoArgWinForComparison()
 
 if __name__ == '__main__':
     with torch.no_grad():
