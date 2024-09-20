@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="scuee_user02@202.115.52.217:22 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="scuee_user02@202.115.52.217:22 password (2)" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="scuee_user02@202.115.52.217:22 password">
+      <paths name="scuee_user02@202.115.52.217:22 password (2)">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/scuee_user02/cp/model_collection" local="$PROJECT_DIR$" />
+            <mapping deploy="/cyc/model collection" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
