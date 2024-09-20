@@ -33,7 +33,7 @@ class Process():
 
         file_path = os.path.join(pth_to_load, file)
 
-        self.net.load_state_dict(torch.load(file_path))
+        self.net.load_state_dict(torch.load(file_path, map_location=self.arg.device))
         print(f"Model loaded from {file_path}")
 
     def TrainEngineWithNOandInputWindowSize(
@@ -227,11 +227,15 @@ class Process():
         ax2.tick_params(axis='y', labelcolor='k')
 
         # 添加标题
-        plt.title('RMSE reduction on {}'.format(self.arg.dataset))
+        plt.title(
+            'RMSE reduction on {}'.format(self.arg.dataset),
+            fontsize=18
+        )
         # 添加图例
         ax1.legend(loc='upper left')
         ax2.legend(loc='upper right')
         # 显示图表
+        fig.tight_layout()
         plt.show()
 
     def bar_visualize(self, size, RMSE_real, RMSE_diff):
@@ -346,22 +350,24 @@ class Process():
         cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
 
         ax.set_title(
-            'Remaining Useful Life Prediction--{} on {}'.format(self.arg.model_name, self.arg.dataset),
-            fontsize=15
+            '{} on {}'.format(self.arg.model_name, self.arg.dataset),
+            fontsize=18
         )
         ax.legend()
 
         ax.set_xlabel("Samples")
         ax.set_ylabel("Remaining Useful Life")
+        fig.tight_layout()
         plt.show()
 
     #TODO: Implement this function
-    def DrawTrainEnginePredOnAutoArgWinForComparison(self):
+    def DrawGivenTrainEnginePredOnAutoArgWinForComparison(self, engine, step : int):
+        assert step <= 7, 'time-window enlargement step out of range'
         outputs, targets, RMSEs, RMSE60s = list(), list(), list(), list()
 
-        for i in range(5):
+        for i in range(step):
             output, target, targfull = self.TrainEngineWithNOandInputWindowSize(
-                self.arg.engine_choice, self.arg.window_size + 5*i
+                engine, self.arg.window_size + 5*i
             )
             RMSE = pow(self.loss_function(torch.tensor(output), torch.tensor(target)).item(), 0.5)
             RMSE60 = pow(self.loss_function(torch.tensor(output[-60:]), torch.tensor(target[-60:])).item(), 0.5)
@@ -371,14 +377,16 @@ class Process():
             RMSE60s.append(RMSE60)
 
         fig, ax = plt.subplots(figsize=(10, 6))
-        line_widths = [2, 3, 5, 8, 14]
+        line_widths = [2, 3, 5, 8, 14, 18, 22]
         dot_sizes_start = 20
         length_plot = len(targfull)
-        colors = [(229/255, 43/255, 80/255),
-                  (13/255, 148/255, 148/255),
-                  (253/255, 238/255, 0/255),
-                  (111/255, 0/255, 255/255),
-                  (0/255, 240/255, 230/255)]
+        colors = [(255/255, 0/255, 0/255),
+                  (216/255, 0/255, 0/255),
+                  (177/255, 0/255, 0/255),
+                  (137/255, 0/255, 0/255),
+                  ( 98/255, 0/255, 0/255),
+                  ( 59/255, 0/255, 0/255),
+                  ( 20/255, 0/255, 0/255),]
         darken_factor = 0.7
 
         ax.plot(
@@ -390,7 +398,7 @@ class Process():
             zorder=0,
         )
 
-        for i in range(5):
+        for i in range(step):
             window_size = self.arg.window_size + 5*i
             ax.plot(
                 range(window_size-1, length_plot),
@@ -402,12 +410,13 @@ class Process():
                 zorder=5-i
             )
 
-        ax.set_title('Different time-window prediction on {}, Engine #{}'.format(
-            self.arg.dataset, self.arg.engine_choice)
+        ax.set_title('Pprediction on {}, Engine #{}'.format(
+            self.arg.dataset, engine)
         )
         ax.legend(loc='lower left')
         ax.set_xlabel('cycle')
         ax.set_ylabel('RUL')
+        fig.tight_layout()
         fig.show()
 
 
@@ -417,7 +426,7 @@ def args_config(dataset_choice : int) -> Namespace:
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
         epoch     = 10,
-        device    = torch.device("cuda:1" if torch.cuda.is_available() else "cpu"),
+        device    = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
 
@@ -452,7 +461,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' : 55,
                 'RUL': 525,
             }
-            arguments.engine_choice = 77 # 9, 77 (50, 60)
+            arguments.engine_choice = 77 # 9, 77 (50, 60) | 48, 58, 61
             arguments.window_size = 50
 
         case 4:
@@ -462,7 +471,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' :118,
                 'RUL':543,
             }
-            arguments.engine_choice = 118 # 118
+            arguments.engine_choice = 118 # 118 (40~60)
             arguments.window_size = 40
 
         case _:
@@ -473,7 +482,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=4,
+        dataset_choice=1,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -485,12 +494,16 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    instance.Test()
+    # instance.Test()
     # instance.DrawTrainEnginePredOnArgWin()
     # instance.RMSE60OfTrainEngineOnArgDataset()
     # instance.bell_visualize()
     # instance.sign_test()
-    # instance.DrawTrainEnginePredOnAutoArgWinForComparison()
+
+    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(118, 5)
+    instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
+    # for i in range(1, instance.data.train_engine_num + 1):
+    #     instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(i, 7)
 
 if __name__ == '__main__':
     with torch.no_grad():

@@ -206,7 +206,7 @@ class ResBlock(nn.Module):
 class LSTM_pTSMixer_GA(nn.Module):
     def __init__(self, sensors, e_layers, t_model, c_model, lstm_layer_num, seq_len, dropout, accept_window):
         super(LSTM_pTSMixer_GA, self).__init__()
-        self.name = 'LSTM_pTSMixer_SGA'
+        self.name = 'LSTM-pTSMixer-SGA'
         self.layer = e_layers
         self.accept_window = accept_window
 
