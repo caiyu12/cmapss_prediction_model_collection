@@ -200,8 +200,8 @@ class Process():
             label='Bars',
             zorder=1
         )
-        ax1.set_xlabel('Improvement', color='k', fontsize=14)
-        ax1.set_ylabel('Frequency', color='k', fontsize=14)
+        ax1.set_xlabel('improvement', color='k', fontsize=14)
+        ax1.set_ylabel('frequency', color='k', fontsize=14)
         ax1.tick_params(axis='y', labelcolor='k')
         # 绘制正态分布的 bell curve
         ax2.plot(
@@ -223,7 +223,7 @@ class Process():
             linewidth=2,
             label='KDE',
         )
-        ax2.set_ylabel('Probability Density', color='k')
+        ax2.set_ylabel('probability Density', color='k', fontsize=14)
         ax2.tick_params(axis='y', labelcolor='k')
 
         # 添加标题
@@ -345,7 +345,8 @@ class Process():
 
         # add color bar
         cbar = plt.colorbar(sc, ax=ax)
-        cbar.set_label('ERROR (Predicted RUL - Actual RUL)')
+        cbar.set_label('ERROR (Predicted RUL - Actual RUL)', fontsize=14)
+        cbar.ax.tick_params(labelsize=12)
         cbar.set_ticks([0, 0.5, 1])
         cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
 
@@ -353,12 +354,12 @@ class Process():
             '{} on {} test dataset'.format(self.arg.model_name, self.arg.dataset),
             fontsize=18
         )
-        ax.legend()
+        ax.legend(loc='lower left', fontsize=12)
 
-        ax.set_xlabel("Samples")
-        ax.set_ylabel("Remaining Useful Life")
+        ax.set_xlabel("Samples", fontsize=14)
+        ax.set_ylabel("Remaining Useful Life", fontsize=14)
         fig.tight_layout()
-        plt.show()
+        fig.show()
 
     #TODO: Implement this function
     def DrawGivenTrainEnginePredOnAutoArgWinForComparison(self, engine, step : int):
@@ -381,10 +382,10 @@ class Process():
         dot_sizes_start = 20
         length_plot = len(targfull)
         colors = [(255/255, 0/255, 0/255),
-                  (0/255, 255/255, 0/255),
-                  (255/255, 255/255, 0/255),
-                  (255/255, 0/255, 255/255),
-                  (128/255, 0/255, 0/255),
+                  (220/255, 0/255, 0/255),
+                  (190/255, 0/255, 0/255),
+                  (160/255, 0/255, 0/255),
+                  (130/255, 0/255, 0/255),
                   (255/255, 173/255, 173/255),
                   (255/255, 128/255, 0/255),
                   (0/255, 255/255, 0/255),]
@@ -411,13 +412,13 @@ class Process():
                 zorder=5-i
             )
 
-        ax.set_title('Prediction on {}, Train Engine #{}'.format(
+        ax.set_title('Prediction on {} Train Engine #{}'.format(
             self.arg.dataset, engine),
             fontsize=18
         )
-        ax.legend(loc='lower left')
-        ax.set_xlabel('cycle')
-        ax.set_ylabel('RUL')
+        ax.legend(loc='lower left', fontsize=12)
+        ax.set_xlabel('cycle', fontsize=14)
+        ax.set_ylabel('RUL',   fontsize=14)
         fig.tight_layout()
         fig.show()
 
@@ -496,13 +497,13 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    # instance.Test()
+    instance.Test()
     # instance.DrawTrainEnginePredOnArgWin()
     # instance.RMSE60OfTrainEngineOnArgDataset()
-    instance.bell_visualize()
+    # instance.bell_visualize()
     # instance.sign_test()
 
-    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(58, 7)
+    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(58, 5)
     # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
     # for i in range(1, instance.data.train_engine_num + 1):
     #     instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(i, 7)
