@@ -200,8 +200,8 @@ class Process():
             label='Bars',
             zorder=1
         )
-        ax1.set_xlabel('Improvement')
-        ax1.set_ylabel('Frequency', color='k')
+        ax1.set_xlabel('Improvement', color='k', fontsize=14)
+        ax1.set_ylabel('Frequency', color='k', fontsize=14)
         ax1.tick_params(axis='y', labelcolor='k')
         # 绘制正态分布的 bell curve
         ax2.plot(
@@ -228,12 +228,12 @@ class Process():
 
         # 添加标题
         plt.title(
-            'RMSE reduction on {}'.format(self.arg.dataset),
+            'RMSE reduction on {} train dataset'.format(self.arg.dataset),
             fontsize=18
         )
         # 添加图例
-        ax1.legend(loc='upper left')
-        ax2.legend(loc='upper right')
+        ax1.legend(loc='upper left', fontsize=12)
+        ax2.legend(loc='upper right', fontsize=12)
         # 显示图表
         fig.tight_layout()
         plt.show()
@@ -350,7 +350,7 @@ class Process():
         cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
 
         ax.set_title(
-            '{} on {}'.format(self.arg.model_name, self.arg.dataset),
+            '{} on {} test dataset'.format(self.arg.model_name, self.arg.dataset),
             fontsize=18
         )
         ax.legend()
@@ -381,12 +381,13 @@ class Process():
         dot_sizes_start = 20
         length_plot = len(targfull)
         colors = [(255/255, 0/255, 0/255),
-                  (216/255, 0/255, 0/255),
-                  (177/255, 0/255, 0/255),
-                  (137/255, 0/255, 0/255),
-                  ( 98/255, 0/255, 0/255),
-                  ( 59/255, 0/255, 0/255),
-                  ( 20/255, 0/255, 0/255),]
+                  (0/255, 255/255, 0/255),
+                  (255/255, 255/255, 0/255),
+                  (255/255, 0/255, 255/255),
+                  (128/255, 0/255, 0/255),
+                  (255/255, 173/255, 173/255),
+                  (255/255, 128/255, 0/255),
+                  (0/255, 255/255, 0/255),]
         darken_factor = 0.7
 
         ax.plot(
@@ -410,8 +411,9 @@ class Process():
                 zorder=5-i
             )
 
-        ax.set_title('Pprediction on {}, Engine #{}'.format(
-            self.arg.dataset, engine)
+        ax.set_title('Prediction on {}, Train Engine #{}'.format(
+            self.arg.dataset, engine),
+            fontsize=18
         )
         ax.legend(loc='lower left')
         ax.set_xlabel('cycle')
@@ -471,7 +473,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' :118,
                 'RUL':543,
             }
-            arguments.engine_choice = 118 # 118 (40~60)
+            arguments.engine_choice = 118 # 118 (40~60), 1
             arguments.window_size = 40
 
         case _:
@@ -482,7 +484,7 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=1,
+        dataset_choice=4,
     )
 
     model = LSTM_pTSMixer_GA(
@@ -497,11 +499,11 @@ def main() -> None:
     # instance.Test()
     # instance.DrawTrainEnginePredOnArgWin()
     # instance.RMSE60OfTrainEngineOnArgDataset()
-    # instance.bell_visualize()
+    instance.bell_visualize()
     # instance.sign_test()
 
-    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(118, 5)
-    instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
+    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(58, 7)
+    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
     # for i in range(1, instance.data.train_engine_num + 1):
     #     instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(i, 7)
 
