@@ -48,20 +48,23 @@ class Train():
 
                 with torch.no_grad():
                     self.net.eval()
-                    test_dataloader = self.data.getTestDataloader(
-                        batch_size=1,
-                        memory_pinned=self.arg.memory_pinned
-                    )
-                    i = 0
-                    outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
-                    for data, target in test_dataloader:
-                        data, target = data.to(self.arg.device), target.to(self.arg.device)
-                        output = self.net(data)
-
-                        outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
-                        i += 1
-
-                        del data, target, output
+                    # test_dataloader = self.data.getTestDataloader(
+                    #     batch_size=1,
+                    #     memory_pinned=self.arg.memory_pinned
+                    # )
+                    # i = 0
+                    # outputs, targets = torch.zeros(self.data.test_engine_num), torch.zeros(self.data.test_engine_num)
+                    # for data, target in test_dataloader:
+                    #     data, target = data.to(self.arg.device), target.to(self.arg.device)
+                    #     output = self.net(data)
+                    #
+                    #     outputs[i], targets[i] = output.cpu().detach(), target.cpu().detach()
+                    #     i += 1
+                    #
+                    #     del data, target, output
+                    data, target = self.data.sig_testdata(57)
+                    output = self.net(data)
+                    outputs, targets = output.cpu().detach(), target.cpu().detach()
 
                 test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
                 test_score  = self.score_function(outputs, targets).item()
@@ -69,15 +72,15 @@ class Train():
                 targets_cpu = targets.numpy()*self.arg.max_rul
                 test_RMSE   = test_RMSE*self.arg.max_rul
 
-                if test_RMSE < test_RMSE_best:
-                    test_RMSE_best = test_RMSE
-                    print('Epoch: {:03d}, '
-                          'Train Loss: {:.4f}, '
-                          'Test RMSE: {:.4f}, '
-                          'Test Score: {:.4f}, '
-                          'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
-                    self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
-                    self.save_best_model_param(test_RMSE)
+                # if test_RMSE < test_RMSE_best:
+                #     test_RMSE_best = test_RMSE
+                #     print('Epoch: {:03d}, '
+                #           'Train Loss: {:.4f}, '
+                #           'Test RMSE: {:.4f}, '
+                #           'Test Score: {:.4f}, '
+                #           'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
+                #     self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
+                #     self.save_best_model_param(test_RMSE)
 
         return float(test_RMSE_best)
 

@@ -91,6 +91,15 @@ class CMAPSS_Data_Process():
 
         return test_dataloader
 
+    def sig_testdata(self,engine_id):
+        test_dataset = TestDataset(
+            data_group=self.test_data,
+            targ_group=self.test_target,
+            accept_window=self.arg.accept_window,
+            max_window=self.arg.window_size_tuple[-1]
+        )
+        test_data, target_data = test_dataset.__getitem__(engine_id)
+        return test_data, target_data
 
 
     def dataProcess(
