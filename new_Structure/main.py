@@ -62,16 +62,24 @@ class Train():
                     #     i += 1
                     #
                     #     del data, target, output
-                    data, target = self.data.sig_testdata(57)
-                    output = self.net(data)
-                    outputs, targets = output.cpu().detach(), target.cpu().detach()
+                    test_data, test_target = self.data.sig_testdata(56)
+                    test_target = torch.from_numpy(test_target)
+                    test_data, test_target = test_data.to(self.arg.device), test_target.to(self.arg.device)
+                    test_data = test_data.unsqueeze(0)
+                    test_output = self.net(test_data)
+                    outputs, targets = test_output.cpu().detach(), test_target.cpu().detach()
 
                 test_RMSE   = pow(self.loss_function(outputs, targets).item(), 0.5)
                 test_score  = self.score_function(outputs, targets).item()
                 outputs_cpu = outputs.numpy()*self.arg.max_rul
                 targets_cpu = targets.numpy()*self.arg.max_rul
                 test_RMSE   = test_RMSE*self.arg.max_rul
-
+                print('Epoch: {:03d}, '
+                          'Train Loss: {:.4f}, '
+                          'Test RMSE: {:.4f}, '
+                          'Test Score: {:.4f}, '
+                          'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
+                self.save_sig_rmse(test_RMSE,window_size)
                 # if test_RMSE < test_RMSE_best:
                 #     test_RMSE_best = test_RMSE
                 #     print('Epoch: {:03d}, '
@@ -97,6 +105,18 @@ class Train():
                 score = score + (torch.exp((predicted[i]*self.arg.max_rul-real[i]*self.arg.max_rul)/10)-1)
 
         return score
+
+    def save_sig_rmse(self, rmse, window_size,epoch):
+        # Define the path to save the RMSE
+        file_path = 'test_results.txt'
+
+        # Append the results to the file
+        with open(file_path, mode='a') as file:
+            file.write(f'Epoch: {epoch}, Window Size: {window_size}, RMSE: {test_RMSE}, Score: {test_score}\n')
+
+        file_dir = os.path.join('./param_model', 'sig_test')
+        with open(file_dir + '/' + 'window_size=' + str(window_size)+ '.txt', 'a') as f:
+            f.write(str(rmse)+'\n')
 
     def visualize(self, result, y_test, rmse, score):
         """
@@ -246,7 +266,7 @@ def main() -> None:
     # )
 
     model = LSTM_pTSMixer_GA(
-        sensors=14, e_layers=16,
+        sensors=14, e_layers=4,
         t_model=48, c_model=36,
         lstm_layer_num=2,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window
