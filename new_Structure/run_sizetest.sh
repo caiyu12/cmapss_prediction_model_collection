@@ -1,4 +1,4 @@
-for window_size in 50 60 70 80 90 100 110 120
+for engine_id in 56 125 183
 do
-  python main_sizetest.py window_size $window_size
+  python main.py engine_id $engine_id
 done

@@ -62,7 +62,7 @@ class Train():
                     #     i += 1
                     #
                     #     del data, target, output
-                    test_data, test_target = self.data.sig_testdata(56)
+                    test_data, test_target = self.data.sig_testdata(self.arg.engine_id)
                     test_target = torch.from_numpy(test_target)
                     test_data, test_target = test_data.to(self.arg.device), test_target.to(self.arg.device)
                     test_data = test_data.unsqueeze(0)
@@ -79,7 +79,7 @@ class Train():
                           'Test RMSE: {:.4f}, '
                           'Test Score: {:.4f}, '
                           'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
-                self.save_sig_rmse(test_RMSE,window_size)
+                self.save_sig_rmse(test_RMSE, window_size, epoch)
                 # if test_RMSE < test_RMSE_best:
                 #     test_RMSE_best = test_RMSE
                 #     print('Epoch: {:03d}, '
@@ -107,16 +107,11 @@ class Train():
         return score
 
     def save_sig_rmse(self, rmse, window_size,epoch):
-        # Define the path to save the RMSE
-        file_path = 'test_results.txt'
-
-        # Append the results to the file
-        with open(file_path, mode='a') as file:
-            file.write(f'Epoch: {epoch}, Window Size: {window_size}, RMSE: {test_RMSE}, Score: {test_score}\n')
-
-        file_dir = os.path.join('./param_model', 'sig_test')
-        with open(file_dir + '/' + 'window_size=' + str(window_size)+ '.txt', 'a') as f:
-            f.write(str(rmse)+'\n')
+        file_dir = os.path.join('./param_model', self.arg.dataset)
+        new_file = os.path.join(file_dir, 'engine_id_' +str(self.arg.engine_id) + '_' + 'window_size_' + str(window_size) + '.txt')
+        with open(new_file, mode='a') as file:
+            # file.write(f'Epoch: {epoch}, RMSE: {rmse}\n')
+            file.write(str(rmse) + '\n')
 
     def visualize(self, result, y_test, rmse, score):
         """
@@ -211,15 +206,16 @@ class Train():
                 IOError('param_model directory structure error, please check it.')
 
 
-def args_config(dataset_choice : int) -> Namespace:
+
+def args_config(dataset_choice,engine_id : int) -> Namespace:
     arguments = Namespace(
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
-        epoch     = 15,
+        epoch     = 50,
         device    = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
-
+        engine_id = engine_id,
         memory_pinned = True,
         # REMIND: place model hyperparameters here
     )
@@ -251,10 +247,42 @@ def args_config(dataset_choice : int) -> Namespace:
 
     return arguments
 
-def main() -> None:
-    # REMIND: model must have its name attribute
+def analysis(engine_id):
+        file_dir = os.path.join('./param_model', 'FD002')
+        aver_list = []
+        window_size_tuple = (50, 60, 70, 80, 90, 100, 110, 120)
+        for window_size in window_size_tuple:
+            data = []
+            file_name = os.path.join(file_dir, 'engine_id_' + str(engine_id) + '_' + 'window_size_' + str(window_size) + '.txt')
+            with open(file_name,
+                      'r') as file:
+                for line in file:
+                    data.append(float(line.strip()))
+                aver = sum(data) / len(data)
+                # print("window_size:{},rmse:{}",window_size,aver)
+                print(aver)
+                aver_list.append(aver)
+                data.clear()
+        plt.figure(figsize=(10, 6))
+        plt.plot(aver_list, marker='o', linestyle='-', color='blue')
+
+        # 自定义横轴刻度
+        plt.xticks(ticks=range(len(aver_list)), labels=[50, 60, 70, 80, 90, 100, 110, 120])
+        # 添加标题和轴标签
+        plt.title('Trend of Given Data:engine_id={},period=63')
+        plt.xlabel('Custom X-Axis')
+        plt.ylabel('Value')
+
+        # 显示网格
+        plt.grid(True)
+
+        # 显示图表
+        plt.show()
+
+def main(engine_id) -> None:
     args = args_config(
         dataset_choice=2,
+        engine_id=engine_id
     )
     # model = TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
     # model = parallel_TSMixer(sensors=14, e_layers=16, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2)
@@ -284,6 +312,9 @@ def main() -> None:
 
     train = Train(args, model)
     rmse = train.Train_Test()
+    analysis(engine_id)
 
 if __name__ == '__main__':
-    main()
+    for engine_id in (56,125,183):
+        main(engine_id)
+
