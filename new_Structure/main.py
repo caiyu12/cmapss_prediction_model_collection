@@ -9,6 +9,7 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from mpl_toolkits.mplot3d import Axes3D
 from scipy.stats import norm, gaussian_kde, binomtest
 import os
 
@@ -200,15 +201,15 @@ class Process():
             label='Bars',
             zorder=1
         )
-        ax1.set_xlabel('improvement', color='k', fontsize=14)
-        ax1.set_ylabel('frequency', color='k', fontsize=14)
+        ax1.set_xlabel('improvement', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        ax1.set_ylabel('frequency', color='k',   fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         ax1.tick_params(axis='y', labelcolor='k')
         # 绘制正态分布的 bell curve
         ax2.plot(
             x,
             p,
             'r',
-            linewidth=2,
+            linewidth=4,
             label='Bell Curve',
             zorder=2
         )
@@ -220,20 +221,21 @@ class Process():
             x,
             kde_values,
             'g',
-            linewidth=2,
+            linewidth=4,
             label='KDE',
         )
-        ax2.set_ylabel('probability Density', color='k', fontsize=14)
+        ax2.set_ylabel('probability Density', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         ax2.tick_params(axis='y', labelcolor='k')
 
         # 添加标题
         plt.title(
             'RMSE reduction on {} train dataset'.format(self.arg.dataset),
-            fontsize=18
+            fontname=self.arg.fontname,
+            fontsize=self.arg.title_fontsize
         )
         # 添加图例
-        ax1.legend(loc='upper left', fontsize=12)
-        ax2.legend(loc='upper right', fontsize=12)
+        ax1.legend(loc='upper left', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+        ax2.legend(loc='upper right', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
         # 显示图表
         fig.tight_layout()
         plt.show()
@@ -248,15 +250,15 @@ class Process():
         bars_diff = ax.bar(x_labels + width/2, RMSE_diff, color='r', label='RMSE difference')
         for i, bar in enumerate(bars_real):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f'{x_labels[i]}',
-            ha='center', va='bottom' if bar.get_height() >= 0 else 'top', fontsize=8)
+            ha='center', va='bottom' if bar.get_height() >= 0 else 'top', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
 
         for i, bar in enumerate(bars_diff):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f'{x_labels[i]}',
-            ha='center', va='bottom' if bar.get_height() >= 0 else 'top', fontsize=8)
+            ha='center', va='bottom' if bar.get_height() >= 0 else 'top', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
 
             ax.set_xlabel('Index')
             ax.set_ylabel('RMSE')
-            ax.set_title('Bar chart of RMSE60 on {}'.format(self.arg.dataset))
+            ax.set_title('Bar chart of RMSE60 on {}'.format(self.arg.dataset), fontname=self.arg.fontname, fontsize=self.arg.title_fontsize)
             ax.legend()
             # 显示图表
             # plt.tight_layout()
@@ -286,80 +288,73 @@ class Process():
         )
         ax.set_title('Remaining Useful Life Prediction--{} on {}, Engine #{}, Window Size={}'.format(
             self.arg.model_name, self.arg.dataset, choice, window
-            )
+            ), fontname=self.arg.fontname, fontsize=self.arg.title_fontsize
         )
-        ax.legend()
+        ax.legend(fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
         plt.show()
 
     def scatter_visualize(self, result, y_test, rmse, score):
-        """
-
-        :param result: RUL prediction results
-        :param y_test: true RUL of testing set
-        :param num_test: number of samples
-        :param rmse: RMSE of prediction results
-        """
-        result = numpy.array(result, dtype=object).reshape(-1, 1)
+        result = np.array(result, dtype=object).reshape(-1, 1)
         num_test = len(result)
         y_test = pandas.DataFrame(y_test, columns=['RUL'])
         result = y_test.join(pandas.DataFrame(result))
-        result = result.sort_values('RUL', ascending=False)
         rmse = float(rmse)
 
-        # the true remaining useful life of the testing samples
         true_rul = result.iloc[:, 0].to_numpy()
-        # the predicted remaining useful life of the testing samples
         pred_rul = result.iloc[:, 1].to_numpy()
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        # plt.axvline(x=num_test, c='r', linestyle='--')  # size of the training set
+        if self.arg.dataset == 'FD004':
+            fig, ax = plt.subplots(figsize=(20, 4))
+        else:
+            fig, ax = plt.subplots(figsize=(20, 3))
+        ax.grid(True)
 
-        ax.plot(
-            true_rul,
-            color='blue',
-            label='Actual RUL',
-            linewidth=4,
-            zorder=0,
-        )  # actual plot
+        ax.plot(true_rul, color='blue', label='Actual RUL', linewidth=1, linestyle='--', zorder=0)
+        ax.scatter(x=range(num_test), y=true_rul, c='blue', edgecolor='k', s=100, marker='o', zorder=0)
 
-        # err outside -10 to 10 will be printed as prue color
-        max_err_clip =  20
+        max_err_clip = 20
         min_err_clip = -20
         err = pred_rul - true_rul
-        cliped_err = err.clip(min_err_clip, max_err_clip)
-        cliped_normed_err = (cliped_err - min_err_clip) / (max_err_clip - min_err_clip)
+        clipped_err = err.clip(min_err_clip, max_err_clip)
+        clipped_normed_err = (clipped_err - min_err_clip) / (max_err_clip - min_err_clip)
 
         colors = ['green', 'white', 'red']
-        nodes = [0, 0.5, 1]  # 0: far below, 0.5: same, 1: far above
+        nodes = [0, 0.5, 1]
         color_map = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
+
         sc = ax.scatter(
-            x=range(len(pred_rul)),
+            x=range(num_test),
             y=pred_rul,
-            c=cliped_normed_err,
+            c=clipped_normed_err,
             cmap=color_map,
             edgecolor='k',
-            s=100,
+            s=200,
             label='Predicted RUL RMSE = {} Score = {})'.format(round(rmse, 3), int(score)),
-            zorder=1,
-        )  # predicted plot
-
-        # add color bar
-        cbar = plt.colorbar(sc, ax=ax)
-        cbar.set_label('ERROR (Predicted RUL - Actual RUL)', fontsize=14)
-        cbar.ax.tick_params(labelsize=12)
-        cbar.set_ticks([0, 0.5, 1])
-        cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
-
-        ax.set_title(
-            '{} on {} test dataset'.format(self.arg.model_name, self.arg.dataset),
-            fontsize=18
+            marker='^',
+            zorder=2,
         )
-        ax.legend(loc='lower left', fontsize=12)
 
-        ax.set_xlabel("Samples", fontsize=14)
-        ax.set_ylabel("Remaining Useful Life", fontsize=14)
+        ax.plot(pred_rul, color=(0.9, 0.7, 0.), linewidth=2, linestyle='-', zorder=1)
+
+        # Add a horizontal color bar with reduced height
+        if self.arg.dataset == 'FD004':
+            cbar = plt.colorbar(sc, ax=ax, orientation='horizontal', fraction=0.1, pad=0.1)
+            cbar.set_label('ERROR (Predicted RUL - Actual RUL)', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+            cbar.ax.tick_params(labelsize=self.arg.legend_fontsize)
+            cbar.set_ticks([0, 0.5, 1])
+            cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
+
+
+        ax.set_title('{} on {} test dataset'.format(self.arg.model_name, self.arg.dataset),
+                     fontname=self.arg.fontname, fontsize=self.arg.title_fontsize)
+        ax.legend(loc='lower left', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+
+
+        ax.set_xlabel("Samples", fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        ax.set_ylabel("RUL", fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         fig.tight_layout()
-        fig.show()
+        plt.show()
+
 
     #TODO: Implement this function
     def DrawGivenTrainEnginePredOnAutoArgWinForComparison(self, engine, step : int):
@@ -396,6 +391,7 @@ class Process():
             targfull,
             color='blue',
             label='Actual RUL',
+            linestyle='--',
             linewidth=4,
             zorder=0,
         )
@@ -406,22 +402,69 @@ class Process():
                 range(window_size-1, length_plot),
                 outputs[i],
                 color=colors[i],
-                label='Predicted RUL RMSE={}, RMSE-60={}, time-window={}'.format(
-                    round(RMSEs[i], 3), round(RMSE60s[i], 3), window_size),
+                label='Predicted RUL: time-window={}, RMSE={}, RMSE-60={}'.format(
+                    window_size, round(RMSEs[i], 3), round(RMSE60s[i], 3),),
                 linewidth=line_widths[i],
                 zorder=5-i
             )
 
         ax.set_title('Prediction on {} Train Engine #{}'.format(
             self.arg.dataset, engine),
-            fontsize=18
+            fontname=self.arg.fontname,
+            fontsize=self.arg.title_fontsize
         )
-        ax.legend(loc='lower left', fontsize=12)
-        ax.set_xlabel('cycle', fontsize=14)
-        ax.set_ylabel('RUL',   fontsize=14)
+        ax.legend(loc='lower left', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+        ax.set_xlabel('cycle', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        ax.set_ylabel('RUL',   fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         fig.tight_layout()
         fig.show()
 
+    def Draw3dData(self, data : numpy.ndarray, zlabel_pad, ztick_pad) -> None:
+        n_cycles=data.shape[0]
+        n_sensors=data.shape[1]
+        time=numpy.arange(n_cycles)
+        sensor_names = ['s2', 's3', 's4', 's7', 's8', 's9', 's11', 's12', 's13', 's14', 's15', 's17', 's20', 's21']
+
+        fig = plt.figure(figsize=(15, 10))
+        ax = fig.add_subplot(111, projection='3d')
+
+        for i in range(n_sensors):
+            ax.plot(time, [i]*n_cycles, data[:, i])
+
+        # Labeling the axes
+        ax.xaxis.set_rotate_label(False)
+        ax.yaxis.set_rotate_label(False)  # Make y-axis label horizontal
+        ax.set_xlabel('Cycles',
+                      fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize, rotation=0, labelpad=30)
+        ax.set_ylabel('Sensor number',
+                      fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize, rotation=0, labelpad=30)
+        ax.set_zlabel('Magnitude',
+                      fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize,             labelpad=zlabel_pad) # 10 for normalized data
+
+        # Set font size for X-axis tick labels
+        ax.set_xticks(np.linspace(0, n_cycles, 5))  # Example tick positions
+        ax.set_xticklabels(np.linspace(0, n_cycles, 5, dtype=int),
+                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize-1)
+
+        # Set font size for Y-axis tick labels
+        ax.set_yticks(numpy.arange(n_sensors))
+        ax.set_yticklabels(sensor_names,
+                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize-1)
+
+        # Set font size for Z-axis tick labels
+        ax.tick_params(axis='z', pad=ztick_pad) # 0 for normalized data
+        ax.set_zticks(np.linspace(0, data.max(), 5))  # Example tick positions
+        ax.set_zticklabels(np.linspace(0, data.max(), 5),
+                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize-1)
+
+        ax.set_box_aspect([3, 2, 1])
+
+        ax.view_init(elev=20, azim=150)
+        ax.grid(True)
+
+        # fig.tight_layout()
+        fig.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)  # Increase these if the box is still too small
+        fig.show()
 
 
 def args_config(dataset_choice : int) -> Namespace:
@@ -429,12 +472,17 @@ def args_config(dataset_choice : int) -> Namespace:
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
         epoch     = 10,
-        device    = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        device    = torch.device("cuda:2" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
 
         memory_pinned = True,
         # REMIND: place model hyperparameters here
+        fontname='Times New Roman',
+
+        title_fontsize=28,
+        axis_fontsize=22,
+        legend_fontsize=14,
     )
     match dataset_choice:
         case 1:
@@ -464,7 +512,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' : 55,
                 'RUL': 525,
             }
-            arguments.engine_choice = 77 # 9, 77 (50, 60) | 48, 58, 61
+            arguments.engine_choice = 55 # 9, 77 (50, 60) | 48, 58, 61, [40, 44, 51, 56]
             arguments.window_size = 50
 
         case 4:
@@ -485,10 +533,10 @@ def args_config(dataset_choice : int) -> Namespace:
 def main() -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=4,
+        dataset_choice=3,
     )
 
-    model = LSTM_pTSMixer_GA(
+    model = CoSO_pTSMixer_SGA(
         sensors=14, e_layers=8,
         t_model=36, c_model=36, # 48*36 for ReLU
         lstm_layer_num=8,
@@ -497,7 +545,7 @@ def main() -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    instance.Test()
+    # instance.Test()
     # instance.DrawTrainEnginePredOnArgWin()
     # instance.RMSE60OfTrainEngineOnArgDataset()
     # instance.bell_visualize()
@@ -507,6 +555,8 @@ def main() -> None:
     # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
     # for i in range(1, instance.data.train_engine_num + 1):
     #     instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(i, 7)
+    # instance.Draw3dData(instance.data.train_data.get_group(args.engine_choice).iloc[:, 1:].to_numpy(), 10, 0)
+    instance.Draw3dData(instance.data.bare_train_data.get_group(args.engine_choice).iloc[:, 5:].to_numpy(), 20, 10)
 
 if __name__ == '__main__':
     with torch.no_grad():

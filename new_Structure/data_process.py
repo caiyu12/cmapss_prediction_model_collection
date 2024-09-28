@@ -178,6 +178,8 @@ class CMAPSS_Data_Process():
 
         test_data['setting1'] = test_data['setting1'].round(1)
 
+
+        self.bare_train_data = train_data.groupby(by='id')
         # Normalizing data
         # Remind: fault mode not concerned
         bare_train_data = train_data.iloc[:, 2:]
