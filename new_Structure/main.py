@@ -7,10 +7,12 @@ from argparse import Namespace
 import torch
 import numpy
 import pandas
+from matplotlib import cm
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, Normalize
+import matplotlib.lines as mlines
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.stats import norm, gaussian_kde, binomtest
+from scipy.stats import norm, gaussian_kde, binomtest, skew, kurtosis
 import os
 
 class Process():
@@ -175,70 +177,191 @@ class Process():
         result = binomtest(count, len(data), p=0.5, alternative='greater')
         print(result)
 
+    # def bell_visualize(self):
+    #     # Load the data
+    #     data = np.load('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset))
+    #
+    #     # Calculate statistics
+    #     mean = np.mean(data)
+    #     std_dev = np.std(data)
+    #     skewness = skew(data)
+    #     kurt = kurtosis(data)  # Kurtosis calculation
+    #     median = np.median(data)  # Median calculation
+    #     data_range = np.ptp(data)  # Range calculation (max - min)
+    #
+    #     fig, ax1 = plt.subplots(figsize=(10, 6))
+    #     ax2 = ax1.twinx()
+    #
+    #     # Define x range and normal distribution
+    #     xmin, xmax = -15, 15
+    #     x = np.linspace(xmin, xmax, 1000)
+    #     p = norm.pdf(x, mean, std_dev)
+    #
+    #     # Plot histogram
+    #     hist, bin_edges = np.histogram(data, bins=np.arange(int(xmin), int(xmax) + 2, 0.5))
+    #     ax1.bar(
+    #         bin_edges[:-1],
+    #         hist,
+    #         width=np.diff(bin_edges),
+    #         color='skyblue', edgecolor='black',
+    #         alpha=1,
+    #         label='Bars',
+    #         zorder=1
+    #     )
+    #     ax1.set_xlabel('improvement', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+    #     ax1.set_ylabel('frequency', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+    #     ax1.tick_params(axis='y', labelcolor='k')
+    #
+    #     # Plot bell curve (normal distribution)
+    #     ax2.plot(
+    #         x,
+    #         p,
+    #         'r',
+    #         linewidth=4,
+    #         label='Bell Curve',
+    #         zorder=2
+    #     )
+    #
+    #     # Plot KDE
+    #     kde = gaussian_kde(data)
+    #     kde_values = kde(x)
+    #     ax2.plot(
+    #         x,
+    #         kde_values,
+    #         'g',
+    #         linestyle=':',
+    #         linewidth=5,
+    #         label='KDE',
+    #     )
+    #     ax2.set_ylabel('probability Density', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+    #     ax2.tick_params(axis='y', labelcolor='k')
+    #
+    #     # Add title
+    #     plt.title(
+    #         'RMSE reduction on {} train dataset'.format(self.arg.dataset),
+    #         fontname=self.arg.fontname,
+    #         fontsize=self.arg.title_fontsize
+    #     )
+    #
+    #     # Add legends
+    #     ax1.legend(loc='upper left', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname})
+    #     ax2.legend(loc='upper right', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname})
+    #
+    #     # Show axis limits
+    #     plt.xlim(-15, 15)
+    #
+    #     # Display statistics (mean, std dev, skewness, kurtosis, median, range) as text on the plot
+    #     stats_text = 'Mean:     {:>9.2f}\nMedian:   {:>8.2f}\nStd Dev:  {:>8.2f}\nSkewness: {:>6.2f}\nKurtosis: {:>8.2f}\nRange:    {:>8.2f}'.format(
+    #         mean, median, std_dev, skewness, kurt, data_range
+    #     )
+    #
+    #
+    #
+    #     plt.text(0.015, 0.90, stats_text, transform=ax1.transAxes,
+    #              fontdict={'family': self.arg.fontname, 'size': self.arg.legend_fontsize-4},
+    #              verticalalignment='top', bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
+    #
+    #     # Adjust layout
+    #     fig.tight_layout()
+    #     plt.show()
+
 
     def bell_visualize(self):
+        # Load the data
         data = np.load('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset))
 
+        # Calculate statistics
         mean = np.mean(data)
         std_dev = np.std(data)
+        skewness = skew(data)
+        kurt = kurtosis(data)
+        median = np.median(data)
+        data_range = np.ptp(data)
 
         fig, ax1 = plt.subplots(figsize=(10, 6))
-
         ax2 = ax1.twinx()
 
-        xmin, xmax = mean - 3*std_dev, mean + 3*std_dev
+        # Define x range and normal distribution
+        xmin, xmax = -15, 15
         x = np.linspace(xmin, xmax, 1000)
         p = norm.pdf(x, mean, std_dev)
 
-        # 绘制整数柱状图
-        hist, bin_edges = np.histogram(data, bins=range(int(xmin), int(xmax)+2))
+        # Plot histogram with color gradient
+        hist, bin_edges = np.histogram(data, bins=np.arange(int(xmin), int(xmax) + 2, 0.5))
+
+        # Normalize the histogram values for the color mapping
+        normed = Normalize(vmin=min(hist), vmax=max(hist))
+
+        # Use a colormap (e.g., 'viridis')
+        cmap = cm.viridis
+
+        # Create bars with a gradient color
+        color = cmap(normed(hist[0]))  # Map the histogram value to a color
         ax1.bar(
-            bin_edges[:-1],
-            hist,
-            width=np.diff(bin_edges),
-            color='skyblue', edgecolor='black',
-            alpha=1,
+            bin_edges[0], hist[0], width=np.diff(bin_edges)[0],
+            color=color, edgecolor='black',
             label='Bars',
+            alpha=1,
             zorder=1
         )
-        ax1.set_xlabel('improvement', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
-        ax1.set_ylabel('frequency', color='k',   fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        for i in range(1, len(hist)):
+            color = cmap(normed(hist[i]))  # Map the histogram value to a color
+            ax1.bar(
+                bin_edges[i], hist[i], width=np.diff(bin_edges)[0],
+                color=color, edgecolor='black',
+                alpha=1,
+                zorder=1
+            )
+
+        ax1.set_xlabel('Improvement', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        ax1.set_ylabel('Frequency', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         ax1.tick_params(axis='y', labelcolor='k')
-        # 绘制正态分布的 bell curve
+
+        # Plot bell curve (normal distribution)
         ax2.plot(
-            x,
-            p,
-            'r',
-            linewidth=4,
-            label='Bell Curve',
-            zorder=2
+            x, p, 'r', linewidth=4, label='Bell Curve', zorder=2
         )
 
-        # 绘制KDE
+        # Plot KDE
         kde = gaussian_kde(data)
         kde_values = kde(x)
         ax2.plot(
-            x,
-            kde_values,
-            'g',
-            linewidth=4,
-            label='KDE',
+            x, kde_values, color=(0.3, 0.3, 1), linestyle='-.', linewidth=5, label='KDE'
         )
-        ax2.set_ylabel('probability Density', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        ax2.set_ylabel('Probability Density', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         ax2.tick_params(axis='y', labelcolor='k')
 
-        # 添加标题
+        # Add title
         plt.title(
             'RMSE reduction on {} train dataset'.format(self.arg.dataset),
-            fontname=self.arg.fontname,
-            fontsize=self.arg.title_fontsize
+            fontname=self.arg.fontname, fontsize=self.arg.title_fontsize
         )
-        # 添加图例
-        ax1.legend(loc='upper left', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
-        ax2.legend(loc='upper right', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
-        # 显示图表
+
+        # Add legends
+        ax1.legend(loc='upper left', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname})
+        ax2.legend(loc='upper right', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname},
+            handlelength=5,     # Increase the handle length to show the full linestyle
+            # handleheight=1.5  # Adjust handle height if needed
+        )
+
+        # Show axis limits
+        plt.xlim(-15, 15)
+
+        # Display statistics (mean, std dev, skewness, kurtosis, median, range) as text on the plot
+        stats_text = 'Mean:     {:>9.2f}\nMedian:   {:>8.2f}\nStd Dev:  {:>8.2f}\nSkewness: {:>6.2f}\nKurtosis: {:>8.2f}\nRange:    {:>8.2f}'.format(
+            mean, median, std_dev, skewness, kurt, data_range
+        )
+
+        plt.text(0.015, 0.90, stats_text, transform=ax1.transAxes,
+                 fontdict={'family': self.arg.fontname, 'size': self.arg.legend_fontsize-4},
+                 verticalalignment='top', bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
+
+        # Adjust layout
         fig.tight_layout()
         plt.show()
+
+
+
 
     def bar_visualize(self, size, RMSE_real, RMSE_diff):
         width = 0.35
@@ -342,12 +465,13 @@ class Process():
             cbar.set_label('ERROR (Predicted RUL - Actual RUL)', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
             cbar.ax.tick_params(labelsize=self.arg.legend_fontsize)
             cbar.set_ticks([0, 0.5, 1])
-            cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'])
+            cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above']
+                                , fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
 
 
         ax.set_title('{} on {} test dataset'.format(self.arg.model_name, self.arg.dataset),
                      fontname=self.arg.fontname, fontsize=self.arg.title_fontsize)
-        ax.legend(loc='lower left', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+        ax.legend(loc='lower left', fontsize=self.arg.legend_fontsize, prop={'family' : self.arg.fontname})
 
 
         ax.set_xlabel("Samples", fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
@@ -356,14 +480,14 @@ class Process():
         plt.show()
 
 
-    #TODO: Implement this function
-    def DrawGivenTrainEnginePredOnAutoArgWinForComparison(self, engine, step : int):
+
+    def DrawGivenTrainEnginePredOnAutoArgWinForComparison(self, engine, step: int):
         assert step <= 7, 'time-window enlargement step out of range'
         outputs, targets, RMSEs, RMSE60s = list(), list(), list(), list()
 
         for i in range(step):
             output, target, targfull = self.TrainEngineWithNOandInputWindowSize(
-                engine, self.arg.window_size + 5*i
+                engine, self.arg.window_size + 5 * i
             )
             RMSE = pow(self.loss_function(torch.tensor(output), torch.tensor(target)).item(), 0.5)
             RMSE60 = pow(self.loss_function(torch.tensor(output[-60:]), torch.tensor(target[-60:])).item(), 0.5)
@@ -372,20 +496,18 @@ class Process():
             RMSEs.append(RMSE)
             RMSE60s.append(RMSE60)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        line_widths = [2, 3, 5, 8, 14, 18, 22]
-        dot_sizes_start = 20
+        fig, ax = plt.subplots(figsize=(10, 3))
+        line_width = 3  # Same line width for all predicted lines
         length_plot = len(targfull)
-        colors = [(255/255, 0/255, 0/255),
-                  (220/255, 0/255, 0/255),
-                  (190/255, 0/255, 0/255),
-                  (160/255, 0/255, 0/255),
-                  (130/255, 0/255, 0/255),
-                  (255/255, 173/255, 173/255),
-                  (255/255, 128/255, 0/255),
-                  (0/255, 255/255, 0/255),]
-        darken_factor = 0.7
 
+        # Different scatter marker styles
+        scatter_styles = ['o', 's', '^', 'D', 'P', '*', 'v']
+
+        # Define different spacing patterns for the scatter points
+        scatter_spacing = [5, 10, 10, 10, 10, 10, 10]  # Adjust these values to control the scatter point density
+        scatter_sizes   = [50, 70, 100, 130, 160, 190, 220]  # Adjust these values to control the scatter point size
+
+        # Plot actual values as a dashed blue line
         ax.plot(
             range(length_plot),
             targfull,
@@ -396,30 +518,61 @@ class Process():
             zorder=0,
         )
 
+        # List to store the combined handles for legend
+        handles = []
+
+        # Plot predicted lines in red and scatter points with different spacing and styles
         for i in range(step):
-            window_size = self.arg.window_size + 5*i
+            window_size = self.arg.window_size + 5 * i
+
+            # Plot predicted line (red color, same width for all)
             ax.plot(
-                range(window_size-1, length_plot),
+                range(window_size - 1, length_plot),
                 outputs[i],
-                color=colors[i],
-                label='Predicted RUL: time-window={}, RMSE={}, RMSE-60={}'.format(
-                    window_size, round(RMSEs[i], 3), round(RMSE60s[i], 3),),
-                linewidth=line_widths[i],
-                zorder=5-i
+                color='red' if i != 0 else 'green',  # Different color for each line
+                linewidth=line_width,
+                zorder=1
             )
 
+            # Create the scatter points with different spacings
+            scatter_x = range(window_size - 1, length_plot, scatter_spacing[i])  # Different spacing for each scatter
+            scatter = ax.scatter(
+                scatter_x,
+                [outputs[i][j - (window_size - 1)] for j in scatter_x],  # Match the y-values with the spaced x-values
+                facecolors='red' if i != 0 else 'green',  # Inner red
+                edgecolors='black',  # Outer black
+                marker=scatter_styles[i],
+                s=scatter_sizes[i],  # Marker size
+                zorder=step-i
+            )
+
+            # Create a combined line + scatter legend entry
+            combined_legend = mlines.Line2D(
+                [], [], color='red' if i != 0 else 'green',
+                marker=scatter_styles[i],
+                markersize=8, markerfacecolor='red' if i != 0 else 'green', markeredgewidth=1.5, markeredgecolor='black',
+                label='Predicted RUL: time-window={}, RMSE={:.2f}, RMSE-60={:.2f}'.format(
+                    window_size, RMSEs[i], RMSE60s[i])
+            )
+
+            # Append to the handles list
+            handles.append(combined_legend)
+
+        # Set titles, labels, and legends
         ax.set_title('Prediction on {} Train Engine #{}'.format(
             self.arg.dataset, engine),
             fontname=self.arg.fontname,
             fontsize=self.arg.title_fontsize
         )
-        ax.legend(loc='lower left', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+        ax.legend(handles=handles, loc='lower left', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname})
+
         ax.set_xlabel('cycle', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
-        ax.set_ylabel('RUL',   fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
+        ax.set_ylabel('RUL', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         fig.tight_layout()
         fig.show()
 
-    def Draw3dData(self, data : numpy.ndarray, zlabel_pad, ztick_pad) -> None:
+
+    def Draw3dData(self, data : numpy.ndarray, zlabel_pad, ztick_pad, line_width) -> None:
         n_cycles=data.shape[0]
         n_sensors=data.shape[1]
         time=numpy.arange(n_cycles)
@@ -429,8 +582,11 @@ class Process():
         ax = fig.add_subplot(111, projection='3d')
 
         for i in range(n_sensors):
-            ax.plot(time, [i]*n_cycles, data[:, i])
+            ax.plot(time, [i]*n_cycles, data[:, i], linewidth=line_width)
 
+        ax.xaxis.pane.set_facecolor('whitesmoke')  # Lighten the X pane background
+        ax.yaxis.pane.set_facecolor((0.9, 0.9, 0.9))  # Lighten the Y pane background
+        ax.zaxis.pane.set_facecolor('white')  # Lighten the Z pane background
         # Labeling the axes
         ax.xaxis.set_rotate_label(False)
         ax.yaxis.set_rotate_label(False)  # Make y-axis label horizontal
@@ -444,23 +600,27 @@ class Process():
         # Set font size for X-axis tick labels
         ax.set_xticks(np.linspace(0, n_cycles, 5))  # Example tick positions
         ax.set_xticklabels(np.linspace(0, n_cycles, 5, dtype=int),
-                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize-1)
+                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
 
         # Set font size for Y-axis tick labels
         ax.set_yticks(numpy.arange(n_sensors))
         ax.set_yticklabels(sensor_names,
-                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize-1)
+                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
 
         # Set font size for Z-axis tick labels
         ax.tick_params(axis='z', pad=ztick_pad) # 0 for normalized data
         ax.set_zticks(np.linspace(0, data.max(), 5))  # Example tick positions
-        ax.set_zticklabels(np.linspace(0, data.max(), 5),
-                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize-1)
+        ax.set_zticklabels([round(i, 2) for i in np.linspace(0, data.max(), 5)],
+                           fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
+
+
 
         ax.set_box_aspect([3, 2, 1])
 
         ax.view_init(elev=20, azim=150)
-        ax.grid(True)
+        # Set light gray background
+        ax.grid(True, color=(.9, .9, .9), linewidth=0.5, alpha=0.8)  # Lighter grid with gray color and transparency
+
 
         # fig.tight_layout()
         fig.subplots_adjust(left=0.001, right=0.999, top=0.999, bottom=0.001)  # Increase these if the box is still too small
@@ -472,7 +632,7 @@ def args_config(dataset_choice : int) -> Namespace:
         directory = './',
         dataset   = 'FD00{}'.format(dataset_choice),
         epoch     = 10,
-        device    = torch.device("cuda:2" if torch.cuda.is_available() else "cpu"),
+        device    = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         max_rul   = 125,
         learning_rate = 0.001,
 
@@ -480,8 +640,8 @@ def args_config(dataset_choice : int) -> Namespace:
         # REMIND: place model hyperparameters here
         fontname='Times New Roman',
 
-        title_fontsize=28,
-        axis_fontsize=22,
+        title_fontsize=18,
+        axis_fontsize=16,
         legend_fontsize=14,
     )
     match dataset_choice:
@@ -512,7 +672,7 @@ def args_config(dataset_choice : int) -> Namespace:
                 'id' : 55,
                 'RUL': 525,
             }
-            arguments.engine_choice = 55 # 9, 77 (50, 60) | 48, 58, 61, [40, 44, 51, 56]
+            arguments.engine_choice = 56 # 9, 77 (50, 60) | 48, 58, 61, [40, 44, 51, 56]
             arguments.window_size = 50
 
         case 4:
@@ -530,10 +690,10 @@ def args_config(dataset_choice : int) -> Namespace:
 
     return arguments
 
-def main() -> None:
+def main(dataset) -> None:
     # REMIND: model must have its name attribute
     args = args_config(
-        dataset_choice=3,
+        dataset_choice=dataset,
     )
 
     model = CoSO_pTSMixer_SGA(
@@ -552,12 +712,15 @@ def main() -> None:
     # instance.sign_test()
 
     # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(58, 5)
-    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
+    instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
     # for i in range(1, instance.data.train_engine_num + 1):
     #     instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(i, 7)
-    # instance.Draw3dData(instance.data.train_data.get_group(args.engine_choice).iloc[:, 1:].to_numpy(), 10, 0)
-    instance.Draw3dData(instance.data.bare_train_data.get_group(args.engine_choice).iloc[:, 5:].to_numpy(), 20, 10)
+    # instance.Draw3dData(instance.data.train_data.get_group(args.engine_choice).iloc[:, 1:].to_numpy(),
+    #                     10, 5, 1)
+    # instance.Draw3dData(instance.data.bare_train_data.get_group(args.engine_choice).iloc[:, 5:].to_numpy(),
+    #                     20, 10, 3)
 
 if __name__ == '__main__':
-    with torch.no_grad():
-        main()
+    for choice in range(3, 4):
+        with torch.no_grad():
+            main(choice)
