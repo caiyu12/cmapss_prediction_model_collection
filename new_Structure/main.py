@@ -254,7 +254,7 @@ def main(choice) -> None:
         sensors=14, e_layers=8,
         t_model=36, c_model=36,
         lstm_layer_num=8,
-        sga_layer_num=4,
+        sga_layer_num=1,
         seq_len=args.accept_window, dropout=0.2, accept_window=args.accept_window)
 
     # model = ENCODER_LSTM_TSMixer(sensors=14, e_layers=8, d_model=36, seq_len=args.accept_window, pred_len=1, dropout=0.2, accept_window=args.accept_window)
@@ -265,5 +265,5 @@ def main(choice) -> None:
 
 if __name__ == '__main__':
     for choice in range(1, 5):
-        for i in range(15):
+        for i in range(5):
             main(choice)
