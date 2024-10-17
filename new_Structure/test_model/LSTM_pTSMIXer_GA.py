@@ -219,10 +219,10 @@ class LSTM_pTSMixer_GA(nn.Module):
         )
         self.norm = nn.BatchNorm1d(seq_len)
 
-        self.sga_series = nn.ModuleList(
-            [New_AttentionBlockBranch(sensors, seq_len)
-            for _ in range(sga_layer_num)]
-        )
+        # self.sga_series = nn.ModuleList(
+        #     [New_AttentionBlockBranch(sensors, seq_len)
+        #     for _ in range(sga_layer_num)]
+        # )
 
         self.pred_len = 1
         # self.projection = nn.Linear(seq_len, pred_len)
@@ -249,8 +249,8 @@ class LSTM_pTSMixer_GA(nn.Module):
 
         x_sliced = self.norm(x_sliced)
 
-        for i in range(self.sga_layer):
-            x_sliced = self.sga_series[i](x_sliced)
+        # for i in range(self.sga_layer):
+        #     x_sliced = self.sga_series[i](x_sliced)
 
         enc_out = self.projection(x_sliced.transpose(1, 2)).transpose(1, 2)
         enc_out_2d = enc_out.view(-1, 14)

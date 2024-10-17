@@ -77,7 +77,8 @@ class Train():
                           'Test Score: {:.4f}, '
                           'training Window Size: {}'.format(epoch, train_loss, test_RMSE, test_score, window_size))
                     # self.visualize(outputs_cpu, targets_cpu, test_RMSE, test_score)
-                    self.save_best_model_param(test_RMSE) if test_RMSE < self.arg.criterion else None
+                    # self.save_best_model_param(test_RMSE) if test_RMSE < self.arg.criterion else None
+                    self.save_best_model_param(test_RMSE)
 
         return float(test_RMSE_best)
 
@@ -169,24 +170,24 @@ class Train():
         new_file = os.path.join(file_dir, str(new_criterion_value) + '_' + self.arg.model_name + '.pth')
 
         file_num  = len(file_list)
-        # match file_num:
-        #     case 0:
-        #         torch.save(self.net.state_dict(), new_file)
-        #
-        #     case 1:
-        #         old_file_name = file_list[0]
-        #         old_file = os.path.join(file_dir, old_file_name)
-        #         old_criterion_value = float(old_file_name.split('_')[0])
-        #
-        #         if new_criterion_value < old_criterion_value:
-        #             os.remove(old_file)
-        #             torch.save(self.net.state_dict(), new_file)
-        #         else:
-        #             pass
-        #
-        #     case _:
-        #         IOError('param_model directory structure error, please check it.')
-        torch.save(self.net.state_dict(), new_file)
+        match file_num:
+            case 0:
+                torch.save(self.net.state_dict(), new_file)
+
+            case 1:
+                old_file_name = file_list[0]
+                old_file = os.path.join(file_dir, old_file_name)
+                old_criterion_value = float(old_file_name.split('_')[0])
+
+                if new_criterion_value < old_criterion_value:
+                    os.remove(old_file)
+                    torch.save(self.net.state_dict(), new_file)
+                else:
+                    pass
+
+            case _:
+                IOError('param_model directory structure error, please check it.')
+        # torch.save(self.net.state_dict(), new_file)
 
 
 def args_config(dataset_choice : int) -> Namespace:
@@ -265,5 +266,5 @@ def main(choice) -> None:
 
 if __name__ == '__main__':
     for choice in range(1, 5):
-        for i in range(5):
+        for i in range(15):
             main(choice)
