@@ -177,95 +177,6 @@ class Process():
         result = binomtest(count, len(data), p=0.5, alternative='greater')
         print(result)
 
-    # def bell_visualize(self):
-    #     # Load the data
-    #     data = np.load('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset))
-    #
-    #     # Calculate statistics
-    #     mean = np.mean(data)
-    #     std_dev = np.std(data)
-    #     skewness = skew(data)
-    #     kurt = kurtosis(data)  # Kurtosis calculation
-    #     median = np.median(data)  # Median calculation
-    #     data_range = np.ptp(data)  # Range calculation (max - min)
-    #
-    #     fig, ax1 = plt.subplots(figsize=(10, 6))
-    #     ax2 = ax1.twinx()
-    #
-    #     # Define x range and normal distribution
-    #     xmin, xmax = -15, 15
-    #     x = np.linspace(xmin, xmax, 1000)
-    #     p = norm.pdf(x, mean, std_dev)
-    #
-    #     # Plot histogram
-    #     hist, bin_edges = np.histogram(data, bins=np.arange(int(xmin), int(xmax) + 2, 0.5))
-    #     ax1.bar(
-    #         bin_edges[:-1],
-    #         hist,
-    #         width=np.diff(bin_edges),
-    #         color='skyblue', edgecolor='black',
-    #         alpha=1,
-    #         label='Bars',
-    #         zorder=1
-    #     )
-    #     ax1.set_xlabel('improvement', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
-    #     ax1.set_ylabel('frequency', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
-    #     ax1.tick_params(axis='y', labelcolor='k')
-    #
-    #     # Plot bell curve (normal distribution)
-    #     ax2.plot(
-    #         x,
-    #         p,
-    #         'r',
-    #         linewidth=4,
-    #         label='Bell Curve',
-    #         zorder=2
-    #     )
-    #
-    #     # Plot KDE
-    #     kde = gaussian_kde(data)
-    #     kde_values = kde(x)
-    #     ax2.plot(
-    #         x,
-    #         kde_values,
-    #         'g',
-    #         linestyle=':',
-    #         linewidth=5,
-    #         label='KDE',
-    #     )
-    #     ax2.set_ylabel('probability Density', color='k', fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
-    #     ax2.tick_params(axis='y', labelcolor='k')
-    #
-    #     # Add title
-    #     plt.title(
-    #         'RMSE reduction on {} train dataset'.format(self.arg.dataset),
-    #         fontname=self.arg.fontname,
-    #         fontsize=self.arg.title_fontsize
-    #     )
-    #
-    #     # Add legends
-    #     ax1.legend(loc='upper left', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname})
-    #     ax2.legend(loc='upper right', fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname})
-    #
-    #     # Show axis limits
-    #     plt.xlim(-15, 15)
-    #
-    #     # Display statistics (mean, std dev, skewness, kurtosis, median, range) as text on the plot
-    #     stats_text = 'Mean:     {:>9.2f}\nMedian:   {:>8.2f}\nStd Dev:  {:>8.2f}\nSkewness: {:>6.2f}\nKurtosis: {:>8.2f}\nRange:    {:>8.2f}'.format(
-    #         mean, median, std_dev, skewness, kurt, data_range
-    #     )
-    #
-    #
-    #
-    #     plt.text(0.015, 0.90, stats_text, transform=ax1.transAxes,
-    #              fontdict={'family': self.arg.fontname, 'size': self.arg.legend_fontsize-4},
-    #              verticalalignment='top', bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
-    #
-    #     # Adjust layout
-    #     fig.tight_layout()
-    #     plt.show()
-
-
     def bell_visualize(self):
         # Load the data
         data = np.load('./RMSEarray/{}_RMSE_difference.npy'.format(self.arg.dataset))
@@ -417,6 +328,7 @@ class Process():
         plt.show()
 
     def scatter_visualize(self, result, y_test, rmse, score):
+        import matplotlib.lines as mlines  # Import Line2D for custom legend entries
         result = np.array(result, dtype=object).reshape(-1, 1)
         num_test = len(result)
         y_test = pandas.DataFrame(y_test, columns=['RUL'])
@@ -432,7 +344,8 @@ class Process():
             fig, ax = plt.subplots(figsize=(20, 3))
         ax.grid(True)
 
-        ax.plot(true_rul, color='blue', label='Actual RUL', linewidth=1, linestyle='--', zorder=0)
+        # Plot Actual RUL without adding it to the legend
+        ax.plot(true_rul, color='blue', linewidth=1, linestyle='--', zorder=0)
         ax.scatter(x=range(num_test), y=true_rul, c='blue', edgecolor='k', s=100, marker='o', zorder=0)
 
         max_err_clip = 20
@@ -445,6 +358,7 @@ class Process():
         nodes = [0, 0.5, 1]
         color_map = LinearSegmentedColormap.from_list("custom_cmap", list(zip(nodes, colors)))
 
+        # Plot Predicted RUL without adding it to the legend
         sc = ax.scatter(
             x=range(num_test),
             y=pred_rul,
@@ -452,7 +366,6 @@ class Process():
             cmap=color_map,
             edgecolor='k',
             s=200,
-            label='Predicted RUL RMSE = {} Score = {})'.format(round(rmse, 3), int(score)),
             marker='^',
             zorder=2,
         )
@@ -465,14 +378,30 @@ class Process():
             cbar.set_label('ERROR (Predicted RUL - Actual RUL)', fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
             cbar.ax.tick_params(labelsize=self.arg.legend_fontsize)
             cbar.set_ticks([0, 0.5, 1])
-            cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above']
-                                , fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
-
+            cbar.set_ticklabels([f'{min_err_clip} or below', '0', f'+{max_err_clip} or above'], fontname=self.arg.fontname, fontsize=self.arg.legend_fontsize)
 
         ax.set_title('{} on {} test dataset'.format(self.arg.model_name, self.arg.dataset),
                      fontname=self.arg.fontname, fontsize=self.arg.title_fontsize)
-        ax.legend(loc='lower left', fontsize=self.arg.legend_fontsize, prop={'family' : self.arg.fontname})
 
+        # Create custom legend handles
+        actual_rul_line = mlines.Line2D(
+            [], [], color='blue', marker='o', linestyle='--', linewidth=1, markersize=10,
+            markerfacecolor='blue', markeredgewidth=1.5, markeredgecolor='black',
+            label='Actual RUL'
+        )
+
+        predicted_rul_line = mlines.Line2D(
+            [], [], color=(0.9, 0.7, 0.), marker='^', linestyle='-', linewidth=2, markersize=10,
+            markerfacecolor='white', markeredgewidth=1.5, markeredgecolor='black',
+            label='Predicted RUL (RMSE = {:.3f}, Score = {})'.format(rmse, int(score))
+        )
+
+        # Add the custom legend to the plot
+        ax.legend(
+            handles=[actual_rul_line, predicted_rul_line], loc='lower left',
+            fontsize=self.arg.legend_fontsize, prop={'family': self.arg.fontname},
+            handlelength=3,
+        )
 
         ax.set_xlabel("Samples", fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
         ax.set_ylabel("RUL", fontname=self.arg.fontname, fontsize=self.arg.axis_fontsize)
@@ -705,14 +634,14 @@ def main(dataset) -> None:
     args.model_name = model.name
 
     instance = Process(args, model)
-    # instance.Test()
+    instance.Test()
     # instance.DrawTrainEnginePredOnArgWin()
     # instance.RMSE60OfTrainEngineOnArgDataset()
     # instance.bell_visualize()
     # instance.sign_test()
 
     # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(58, 5)
-    instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
+    # instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(args.engine_choice, 5)
     # for i in range(1, instance.data.train_engine_num + 1):
     #     instance.DrawGivenTrainEnginePredOnAutoArgWinForComparison(i, 7)
     # instance.Draw3dData(instance.data.train_data.get_group(args.engine_choice).iloc[:, 1:].to_numpy(),
@@ -721,6 +650,6 @@ def main(dataset) -> None:
     #                     20, 10, 3)
 
 if __name__ == '__main__':
-    for choice in range(3, 4):
+    for choice in range(1, 5):
         with torch.no_grad():
             main(choice)
