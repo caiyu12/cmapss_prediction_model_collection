@@ -18,7 +18,7 @@ We use C-MAPSS dataset to evaluate our method.
 
 You can access [here](https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/), and put the downloaded dataset into directory 'CMAPSSData'.
 
-For running the experiments on C-MAPSS, directly run main_RUL.py
+For running the experiments on C-MAPSS, directly run main.py
 
 
 # Acknowledgement
