@@ -5,10 +5,8 @@
 You will need the following to run the above:
 - Pytorch 1.13.0, Torchvision 0.14.0
 - Python 3.6.8, Pillow 5.4.1, Numpy 1.22.4
-- If you want to train (and don't want to wait for 4 months):
-  - A decent GPU
-  - All the required NVIDIA software to run PyTorch on a GPU (cuda, etc)
-
+- A decent GPU
+- All the required NVIDIA software to run PyTorch on a GPU
 
 # Dataset
 
